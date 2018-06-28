@@ -1,0 +1,20 @@
+{
+  "name": "3d-editor",
+  "version": "1.0.0",
+  "description": "Create and edit 3d models using CSG",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": "https://github.com/bdlucas1/3d",
+  "keywords": [],
+  "author": "",
+  "license": "",
+  "devDependencies": {
+    "electron": "^2.0.0"
+  },
+  "dependencies": {
+    "@types/jquery": "^3.3.4",
+    "jquery": "^3.3.1"
+  }
+}

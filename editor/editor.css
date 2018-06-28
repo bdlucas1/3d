@@ -1,0 +1,53 @@
+body {
+    height: 100vh;
+    width: 100vw;
+    box-sizing: border-box;
+    padding-left: 3em;
+    padding-right: 3em;
+    padding-bottom: 1em;
+    padding-top: 1em;
+    overflow: hidden;
+    font: 14px/20px 'Helvetica Neue Light', HelveticaNeue-Light, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+}
+
+#controls {
+    height: 3em;
+}
+
+#editor-viewer {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: row;
+}
+
+#editor {
+    font: 12px/20px Monaco, monospace;
+    flex-grow: 1;
+    border: none;
+}
+
+#editor:focus {
+    outline: none;
+}
+
+#error {
+    height: 3em;
+}
+
+#viewer-adjustments {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+#viewer {
+    width: 40vw;
+    height: 40vw;
+}
+
+canvas {
+    cursor: move;
+}
+
