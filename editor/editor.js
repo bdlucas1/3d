@@ -3,6 +3,7 @@ exports.__esModule = true;
 var $ = require("jquery");
 var fs = require("fs");
 var path = require("path");
+var commandLineArgs = require("command-line-args");
 var electron_1 = require("electron");
 var log = electron_1.remote.getGlobal('console').log;
 var editorElt = function () { return $('#editor')[0]; };
@@ -11,9 +12,11 @@ var errorElt = function () { return $('#error')[0]; };
 var viewer;
 var keyTimeout = null;
 var modelFn = '../models/demo/model.js';
+var libFn = '../lib/lib.js';
 // read the file
 var read = function () {
     try {
+        log('reading', modelFn);
         var newValue = fs.readFileSync(modelFn).toString();
         if (newValue != editorElt().value) {
             editorElt().value = newValue;
@@ -37,7 +40,9 @@ function size() {
 function build(save) {
     log('building');
     try {
-        var model = new Function(editorElt().value)();
+        delete require.cache[require.resolve(libFn)];
+        var lib = require(libFn);
+        var model = new Function('lib', 'log', editorElt().value)(lib, log);
         errorElt().innerHTML = '';
         viewer.mesh = model.toMesh();
         viewer.gl.ondraw();
@@ -59,6 +64,14 @@ $(window).on('resize', function () {
     build(false);
 });
 $(window).on('load', function () {
+    // select model
+    log('argv', electron_1.remote.process.argv);
+    var optionDefinitions = [
+        { name: 'model', alias: 'm', type: String, defaultValue: 'demo' }
+    ];
+    var options = commandLineArgs(optionDefinitions, { argv: electron_1.remote.process.argv.slice(2) });
+    modelFn = path.join('../models', options.model, 'model.js');
+    log(options);
     // render
     size();
     read();
@@ -71,9 +84,12 @@ $(window).on('load', function () {
         keyTimeout = setTimeout(function () { return build(true); }, 250);
     });
     // respond to file changes
-    fs.watch(path.dirname(modelFn), function (what, fn) {
-        log('file change', what, fn, path.basename(modelFn));
-        if (fn == path.basename(modelFn) && read())
-            build(false);
+    [modelFn, libFn].forEach(function (watchFn) {
+        fs.watch(path.dirname(watchFn), function (what, fn) {
+            log('file change', what, fn, path.basename(watchFn));
+            if (fn == path.basename(watchFn))
+                if (fn != path.basename(modelFn) || read())
+                    build(false);
+        });
     });
 });
