@@ -13,12 +13,11 @@
   </head>
   <body id='top'>
     <div id='controls'></div>
-    <div id='editor-viewer'>
-      <textarea id="editor"></textarea>
-      <div id="viewer-adjustments">
-        <div id="viewer"></div>
-        <div id="adjustments"></div>
+    <div id='viewer-ui'>
+      <div> <!-- needed else following "viewer" doesn't flex-grow - xxx why? -->
+        <table id="ui"></table>
       </div>
+      <div id="viewer"></div>
     </div>
     <span id="error"></span>
   </body>

@@ -9,24 +9,28 @@ const log = remote.getGlobal('console').log
 // trivial type definitions for viewer.js and csg.js loaded in index.html
 declare class CSG {}
 declare class Viewer {
-    constructor(csg: CSG, width: number, height: number, xxx: number)
+    constructor(csg: CSG, width: number, height: number, depth: number)
 }
 
-const editorElt = () => <HTMLTextAreaElement>$('#editor')[0]
+const uiElt = () => <HTMLTableElement>$('#ui')[0]
 const viewerElt = () => <HTMLDivElement>$('#viewer')[0]
 const errorElt = () => <HTMLElement>$('#error')[0]
+
+let modelCode = ""
+let model: any
 let viewer: any
-let keyTimeout: any = null
+
 let modelFn = '../models/demo/model.js'
 let libFn = '../lib/lib.js'
+let uiFn = '../lib/ui.js'
 
 // read the file
 const read = () => {
     try {
         log('reading', modelFn)
         const newValue = fs.readFileSync(modelFn).toString()
-        if (newValue != editorElt().value) {
-            editorElt().value = newValue
+        if (newValue != modelCode) {
+            modelCode = newValue
             return true
         }
     } catch (e) {
@@ -44,23 +48,29 @@ function size() {
     $(viewerElt()).append(viewer.gl.canvas)
 }
 
-// compile program
-function build(save: boolean) {
-    log('building')
+function construct() {
+    log('constructing')
     try {
-        delete require.cache[require.resolve(libFn)]
         let lib = require(libFn)
-        const model = new Function('lib', 'log', editorElt().value)(lib, log)
+        let ui = require(uiFn)
+        model = new Function('log', 'lib', 'ui', modelCode)(log, lib, ui)
         errorElt().innerHTML = ''
-        viewer.mesh = model.toMesh()
-        viewer.gl.ondraw()
-        if (save) {
-            log('saving')
-            fs.writeFileSync(modelFn, editorElt().value)
-        }
     } catch (e) {
-        errorElt().innerText = 'Error: ' + e.toString()
+        log(e.toString())
+        errorElt().innerText = e.toString()
     }
+}
+
+function render() {
+    log('rendering')
+    viewer.mesh = model.toMesh()
+    viewer.gl.ondraw()
+}
+
+export function change() {
+    construct()
+    size()
+    render()
 }
 
 $(window).on('error', (error) => {
@@ -70,7 +80,7 @@ $(window).on('error', (error) => {
 
 $(window).on('resize', () => {
     size()
-    build(false)
+    render()
 })
 
 $(window).on('load', () => {
@@ -85,25 +95,26 @@ $(window).on('load', () => {
     log(options)
 
     // render
-    size()
     read()
-    build(false)
-
-    // respond to edits
-    $(editorElt()).on('input', () => {
-        log('key change')
-        if (keyTimeout)
-            clearTimeout(keyTimeout)
-        keyTimeout = setTimeout(() => build(true), 250)
-    });
+    construct()
+    size()
+    render();
 
     // respond to file changes
-    [modelFn, libFn].forEach((watchFn) => {
+    [modelFn, libFn, uiFn].forEach((watchFn) => {
         fs.watch(path.dirname(watchFn), (what, fn) => {
             log('file change', what, fn, path.basename(watchFn))
-            if (fn == path.basename(watchFn))
-                if (fn != path.basename(modelFn) || read())
-                    build(false)
+            if (fn == path.basename(watchFn)) {
+                try {
+                    delete require.cache[require.resolve(fn)]
+                } catch(e) {
+                    //
+                }
+                read()
+                construct()
+                size()
+                render()
+            }
         })
     })
 
