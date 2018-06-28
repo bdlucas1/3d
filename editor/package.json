@@ -14,7 +14,9 @@
     "electron": "^2.0.0"
   },
   "dependencies": {
+    "@types/command-line-args": "^5.0.0",
     "@types/jquery": "^3.3.4",
+    "command-line-args": "^5.0.2",
     "jquery": "^3.3.1"
   }
 }

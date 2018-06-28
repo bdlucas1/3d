@@ -1,6 +1,7 @@
 import * as $ from 'jquery'
 import * as fs from 'fs'
 import * as path from 'path'
+import * as commandLineArgs from 'command-line-args'
 import {remote} from 'electron'
 
 const log = remote.getGlobal('console').log
@@ -17,10 +18,12 @@ const errorElt = () => <HTMLElement>$('#error')[0]
 let viewer: any
 let keyTimeout: any = null
 let modelFn = '../models/demo/model.js'
+let libFn = '../lib/lib.js'
 
 // read the file
 const read = () => {
     try {
+        log('reading', modelFn)
         const newValue = fs.readFileSync(modelFn).toString()
         if (newValue != editorElt().value) {
             editorElt().value = newValue
@@ -45,7 +48,9 @@ function size() {
 function build(save: boolean) {
     log('building')
     try {
-        const model = new Function(editorElt().value)()
+        delete require.cache[require.resolve(libFn)]
+        let lib = require(libFn)
+        const model = new Function('lib', 'log', editorElt().value)(lib, log)
         errorElt().innerHTML = ''
         viewer.mesh = model.toMesh()
         viewer.gl.ondraw()
@@ -70,6 +75,15 @@ $(window).on('resize', () => {
 
 $(window).on('load', () => {
 
+    // select model
+    log('argv', remote.process.argv)
+    const optionDefinitions = [
+        {name: 'model', alias: 'm', type: String, defaultValue: 'demo'}
+    ]
+    const options = commandLineArgs(optionDefinitions, {argv: remote.process.argv.slice(2)})
+    modelFn = path.join('../models', options.model, 'model.js')
+    log(options)
+
     // render
     size()
     read()
@@ -81,13 +95,16 @@ $(window).on('load', () => {
         if (keyTimeout)
             clearTimeout(keyTimeout)
         keyTimeout = setTimeout(() => build(true), 250)
-    })
+    });
 
     // respond to file changes
-    fs.watch(path.dirname(modelFn), (what, fn) => {
-        log('file change', what, fn, path.basename(modelFn))
-        if (fn==path.basename(modelFn) && read())
-            build(false)
+    [modelFn, libFn].forEach((watchFn) => {
+        fs.watch(path.dirname(watchFn), (what, fn) => {
+            log('file change', what, fn, path.basename(watchFn))
+            if (fn == path.basename(watchFn))
+                if (fn != path.basename(modelFn) || read())
+                    build(false)
+        })
     })
 
 })
