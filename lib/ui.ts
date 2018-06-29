@@ -4,6 +4,20 @@ import * as editor from '../editor/editor'
 
 const log = remote.getGlobal('console').log
 
+type ViewOptions = {
+    distance: number,
+    angle: number
+}
+
+export let viewOptions: ViewOptions = {
+    distance: 5,
+    angle: 45
+}
+
+export function view(options: ViewOptions) {
+    viewOptions = options
+}
+
 const ui: {[name: string]: HTMLInputElement} = {}
 
 export function slider(options: {

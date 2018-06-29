@@ -1,6 +1,7 @@
 import * as $ from 'jquery'
 import * as fs from 'fs'
 import * as path from 'path'
+import * as ui from '../lib/ui'
 import * as commandLineArgs from 'command-line-args'
 import {remote} from 'electron'
 
@@ -9,7 +10,7 @@ const log = remote.getGlobal('console').log
 // trivial type definitions for viewer.js and csg.js loaded in index.html
 declare class CSG {}
 declare class Viewer {
-    constructor(csg: CSG, width: number, height: number, depth: number)
+    constructor(csg: CSG, width: number, height: number, depth: number, angle: number)
 }
 
 const uiElt = () => <HTMLTableElement>$('#ui')[0]
@@ -44,7 +45,7 @@ function size() {
     $(viewerElt()).empty()
     const size = viewerElt().getBoundingClientRect()
     log('size', size.width, size.height)
-    viewer = new Viewer(new CSG(), size.width, size.height, 5)
+    viewer = new Viewer(new CSG(), size.width, size.height, ui.viewOptions.distance, ui.viewOptions.angle)
     $(viewerElt()).append(viewer.gl.canvas)
 }
 

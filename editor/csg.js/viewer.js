@@ -34,7 +34,7 @@ Viewer.lineOverlay = false;
 
 // A viewer is a WebGL canvas that lets the user view a mesh. The user can
 // tumble it around by dragging the mouse.
-function Viewer(csg, width, height, depth) {
+function Viewer(csg, width, height, depth, angle) {
   viewers.push(this);
 
   // Get a new WebGL canvas
@@ -48,7 +48,7 @@ function Viewer(csg, width, height, depth) {
   gl.viewport(0, 0, width, height);
   gl.matrixMode(gl.PROJECTION);
   gl.loadIdentity();
-  gl.perspective(30, width / height, 0.1, 100);
+  gl.perspective(angle, width / height, 0.1, 100);
   gl.matrixMode(gl.MODELVIEW);
 
   // Set up WebGL state
