@@ -24,7 +24,9 @@ function libFn(name: string) {
 }
 
 let modelName = 'N/A'
+let componentName = 'N/A'
 let modelCode = "N/A"
+let models: {[name: string]: any} = {}
 let model: any
 let viewer: any
 
@@ -34,18 +36,25 @@ function modelFn(name: string) {
 
 // read the file
 function read() {
+
     try {
+
+        // read the file
         const fn = modelFn(modelName)
         log('reading', fn)
         const newValue = fs.readFileSync(fn).toString()
         if (newValue != modelCode) {
             modelCode = newValue
-            return true
+            $('#component-selector').empty()
+            construct()
         }
+
     } catch (e) {
         log(e)
     }
-    return false
+
+    
+
 }
 
 // compute size, create viewer
@@ -64,7 +73,20 @@ function construct() {
     log('constructing')
     try {
         const loadedLibs = libNames.map((name) => require(libFn(name)))
-        model = new Function('log', ...libNames, modelCode)(log, ...loadedLibs)
+        models = new Function('log', ...libNames, modelCode)(log, ...loadedLibs)
+        let firstComponent: string | null = null
+        const currentComponent = (<HTMLSelectElement>$('#component-selector')[0]).value
+        $('#component-selector').empty()
+        for (const component in models) {
+            if (!firstComponent || component == currentComponent)
+                firstComponent = component
+            $('<option>')
+                .attr('value', component)
+                .text(component)
+                .appendTo('#component-selector')
+        }
+        if (firstComponent)
+            $('#component-selector').val(firstComponent).trigger('change');
         errorElt().innerHTML = ''
     } catch (e) {
         log(e.toString())
@@ -80,8 +102,6 @@ function render() {
 
 export function change() {
     construct()
-    size()
-    render()
 }
 
 $(window).on('error', (error) => {
@@ -114,9 +134,6 @@ $(window).on('load', () => {
                     //
                 }
                 read()
-                construct()
-                size()
-                render()
             }
         })
     }
@@ -132,11 +149,19 @@ $(window).on('load', () => {
             .appendTo('#model-selector')
         watch(modelFn(fn), fn)
     })
+
+    // respond to model selector changes
     $('#model-selector').on('change', () => {
         modelName = (<HTMLSelectElement>$('#model-selector')[0]).value
+        modelCode = ''
         ui.clear()
         read()
-        construct()
+    })
+
+    // respond to component selector changes
+    $('#component-selector').on('change', () => {
+        componentName = (<HTMLSelectElement>$('#component-selector')[0]).value
+        model = models[componentName]
         size()
         render();
     })
