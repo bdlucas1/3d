@@ -29,6 +29,7 @@ export function slider(options: {
     name: string,
     min: number,
     max: number,
+    step?: number,
     value: number,
     //increment: number,
 }) {
@@ -38,6 +39,7 @@ export function slider(options: {
             .attr('type', 'range')
             .attr('min', options.min)
             .attr('max', options.max)
+            .attr('step', options.step || 1)
             .attr('value', options.value)
             .text(name)
             .on('change', () => {
