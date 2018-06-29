@@ -1,11 +1,10 @@
-slices = ui.slider({name: 'slices', min: 10, max: 50, value: 20})
-wedges = ui.slider({name: 'wedges', min: 4, max: 50, value: 20})
+detail = ui.slider({name: 'detail', min: 10, max: 50, value: 20})
 
 ui.view({distance: 10, height: 2.5})
 
 return lib.vase({
-    slices,
-    wedges,
+    slices: detail,
+    wedges: detail,
     thickness: () => 0.02,
     radius: (s) => lib.wave(0.0, 0.9, 0.25, .4)(s) - 0.1 * s,
     base: 0.1
