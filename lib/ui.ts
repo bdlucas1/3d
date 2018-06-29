@@ -18,7 +18,12 @@ export function view(options: ViewOptions) {
     viewOptions = options
 }
 
-const ui: {[name: string]: HTMLInputElement} = {}
+let ui: {[name: string]: HTMLInputElement} = {}
+
+export function clear() {
+    ui = {}
+    $('#ui').empty()
+}
 
 export function slider(options: {
     name: string,

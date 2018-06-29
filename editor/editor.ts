@@ -17,19 +17,27 @@ const uiElt = () => <HTMLTableElement>$('#ui')[0]
 const viewerElt = () => <HTMLDivElement>$('#viewer')[0]
 const errorElt = () => <HTMLElement>$('#error')[0]
 
-let modelCode = ""
+const libNames = ['lib', 'ui']
+
+function libFn(name: string) {
+    return path.join('../lib', name + '.js')
+}
+
+let modelName = 'N/A'
+let modelCode = "N/A"
 let model: any
 let viewer: any
 
-let modelFn = '../models/demo/model.js'
-let libFn = '../lib/lib.js'
-let uiFn = '../lib/ui.js'
+function modelFn(name: string) {
+    return path.join('../models', name, 'model.js')
+}
 
 // read the file
-const read = () => {
+function read() {
     try {
-        log('reading', modelFn)
-        const newValue = fs.readFileSync(modelFn).toString()
+        const fn = modelFn(modelName)
+        log('reading', fn)
+        const newValue = fs.readFileSync(fn).toString()
         if (newValue != modelCode) {
             modelCode = newValue
             return true
@@ -55,9 +63,8 @@ function size() {
 function construct() {
     log('constructing')
     try {
-        let lib = require(libFn)
-        let ui = require(uiFn)
-        model = new Function('log', 'lib', 'ui', modelCode)(log, lib, ui)
+        const loadedLibs = libNames.map((name) => require(libFn(name)))
+        model = new Function('log', ...libNames, modelCode)(log, ...loadedLibs)
         errorElt().innerHTML = ''
     } catch (e) {
         log(e.toString())
@@ -95,28 +102,12 @@ $(window).on('load', () => {
         {name: 'model', alias: 'm', type: String, defaultValue: 'demo'}
     ]
     const options = commandLineArgs(optionDefinitions, {argv: remote.process.argv.slice(2)})
-    modelFn = path.join('../models', options.model, 'model.js')
     log(options)
 
-    // read model dir
-    fs.readdirSync('../models').forEach(fn => {
-        $('<option>')
-            .attr('value', fn)
-            .text(fn)
-            .appendTo('#model-selector')
-    })
-
-    // render
-    read()
-    construct()
-    size()
-    render();
-
-    // respond to file changes
-    [modelFn, libFn, uiFn].forEach((watchFn) => {
+    function watch(watchFn: string, watchModel: string | null) {
         fs.watch(path.dirname(watchFn), (what, fn) => {
-            log('file change', what, fn, path.basename(watchFn))
-            if (fn == path.basename(watchFn)) {
+            log('file change', what, fn)
+            if (fn == path.basename(watchFn) && (!watchModel || modelName == watchModel)) {
                 try {
                     delete require.cache[require.resolve(fn)]
                 } catch(e) {
@@ -128,6 +119,29 @@ $(window).on('load', () => {
                 render()
             }
         })
+    }
+
+    // respond to lib changes
+    libNames.forEach((name) => watch(libFn(name), null))
+
+    // read model directory, populate menu
+    fs.readdirSync('../models').forEach(fn => {
+        $('<option>')
+            .attr('value', fn)
+            .text(fn)
+            .appendTo('#model-selector')
+        watch(modelFn(fn), fn)
     })
+    $('#model-selector').on('change', () => {
+        modelName = (<HTMLSelectElement>$('#model-selector')[0]).value
+        ui.clear()
+        read()
+        construct()
+        size()
+        render();
+    })
+
+    // load initial model
+    $('#model-selector').val(options.model).trigger('change');
 
 })
