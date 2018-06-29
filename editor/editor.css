@@ -68,8 +68,8 @@ body {
     flex-grow: 1;
 }
 
-#error {
-    height: 3em;
+#message {
+    height: 2em;
 }
 
 

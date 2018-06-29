@@ -15,7 +15,7 @@ declare class Viewer {
 
 const uiElt = () => <HTMLTableElement>$('#ui')[0]
 const viewerElt = () => <HTMLDivElement>$('#viewer')[0]
-const errorElt = () => <HTMLElement>$('#error')[0]
+const messageElt = () => <HTMLElement>$('#message')[0]
 
 const libNames = ['lib', 'ui']
 
@@ -52,9 +52,6 @@ function read() {
     } catch (e) {
         log(e)
     }
-
-    
-
 }
 
 // compute size, create viewer
@@ -72,6 +69,7 @@ function size() {
 function construct() {
     log('constructing')
     try {
+        messageElt().innerText = 'constructing...'
         const loadedLibs = libNames.map((name) => require(libFn(name)))
         models = new Function('log', ...libNames, modelCode)(log, ...loadedLibs)
         let firstComponent: string | null = null
@@ -87,10 +85,9 @@ function construct() {
         }
         if (firstComponent)
             $('#component-selector').val(firstComponent).trigger('change');
-        errorElt().innerHTML = ''
     } catch (e) {
         log(e.toString())
-        errorElt().innerText = e.toString()
+        messageElt().innerText = e.toString()
     }
 }
 
@@ -162,6 +159,7 @@ $(window).on('load', () => {
     $('#component-selector').on('change', () => {
         componentName = (<HTMLSelectElement>$('#component-selector')[0]).value
         model = models[componentName]
+        messageElt().innerText = model.polygons.length
         size()
         render();
     })
