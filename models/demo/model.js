@@ -1,4 +1,4 @@
-ui.view({distance: 5, angle: 45})
+ui.view({distance: 5, height: 4})
 
 var a = CSG.cube({radius: 1.1})
 var b = CSG.sphere({radius: 1.35})

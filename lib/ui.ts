@@ -6,12 +6,12 @@ const log = remote.getGlobal('console').log
 
 type ViewOptions = {
     distance: number,
-    angle: number
+    height: number
 }
 
 export let viewOptions: ViewOptions = {
     distance: 5,
-    angle: 45
+    height: 2
 }
 
 export function view(options: ViewOptions) {
@@ -37,13 +37,18 @@ export function slider(options: {
             .text(name)
             .on('change', () => {
                 log('change', input.value)
+                value.text(input.value)
                 editor.change()
+            })
+            .on('input', () => {
+                value.text(input.value)
             })
         [0]
 
         const tr = $('<tr>').appendTo('#ui')
-        $('<td>').appendTo(tr).text(options.name)
-        $('<td>').appendTo(tr).append(input)
+        $('<td>').appendTo(tr).addClass('ui-name').text(options.name)
+        $('<td>').appendTo(tr).addClass('ui-input').append(input)
+        const value = $('<td>').addClass('ui-value').appendTo(tr).text(input.value)
 
         //.attr('id', 'slider-' + name
         ui[options.name] = input

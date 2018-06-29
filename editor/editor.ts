@@ -45,7 +45,10 @@ function size() {
     $(viewerElt()).empty()
     const size = viewerElt().getBoundingClientRect()
     log('size', size.width, size.height)
-    viewer = new Viewer(new CSG(), size.width, size.height, ui.viewOptions.distance, ui.viewOptions.angle)
+    log('viewOptions', ui.viewOptions)
+    const angle = Math.atan(ui.viewOptions.height / 2 / ui.viewOptions.distance) / Math.PI * 360
+    log('angle', angle)
+    viewer = new Viewer(new CSG(), size.width, size.height, ui.viewOptions.distance, angle)
     $(viewerElt()).append(viewer.gl.canvas)
 }
 
@@ -94,6 +97,14 @@ $(window).on('load', () => {
     const options = commandLineArgs(optionDefinitions, {argv: remote.process.argv.slice(2)})
     modelFn = path.join('../models', options.model, 'model.js')
     log(options)
+
+    // read model dir
+    fs.readdirSync('../models').forEach(fn => {
+        $('<option>')
+            .attr('value', fn)
+            .text(fn)
+            .appendTo('#model-selector')
+    })
 
     // render
     read()
