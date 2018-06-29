@@ -7,6 +7,10 @@ import {remote} from 'electron'
 
 const log = remote.getGlobal('console').log
 
+function now() {
+    return new Date().getTime()
+}
+
 // trivial type definitions for viewer.js and csg.js loaded in index.html
 declare class CSG {}
 declare class Viewer {
@@ -15,7 +19,10 @@ declare class Viewer {
 
 const uiElt = () => <HTMLTableElement>$('#ui')[0]
 const viewerElt = () => <HTMLDivElement>$('#viewer')[0]
-const messageElt = () => <HTMLElement>$('#message')[0]
+
+function message(msg: string) {
+    $('#message')[0].innerText = msg
+}
 
 const libNames = ['lib', 'ui']
 
@@ -54,60 +61,81 @@ function read() {
     }
 }
 
-// compute size, create viewer
-function size() {
-    $(viewerElt()).empty()
-    const size = viewerElt().getBoundingClientRect()
-    log('size', size.width, size.height)
-    log('viewOptions', ui.viewOptions)
-    const angle = Math.atan(ui.viewOptions.height / 2 / ui.viewOptions.distance) / Math.PI * 360
-    log('angle', angle)
-    viewer = new Viewer(new CSG(), size.width, size.height, ui.viewOptions.distance, angle)
-    $(viewerElt()).append(viewer.gl.canvas)
-}
-
+// execute file, constructing model using csg
 function construct() {
+
     log('constructing')
-    try {
-        messageElt().innerText = 'constructing...'
-        const loadedLibs = libNames.map((name) => require(libFn(name)))
-        models = new Function('log', ...libNames, modelCode)(log, ...loadedLibs)
-        let firstComponent: string | null = null
-        const currentComponent = (<HTMLSelectElement>$('#component-selector')[0]).value
-        $('#component-selector').empty()
-        for (const component in models) {
-            if (!firstComponent || component == currentComponent)
-                firstComponent = component
-            $('<option>')
-                .attr('value', component)
-                .text(component)
-                .appendTo('#component-selector')
+    message('constructing...')
+
+    const currentComponent = (<HTMLSelectElement>$('#component-selector')[0]).value
+    const start = now()
+
+    // defer so we will see the "constructing..." message
+    setTimeout(() => {
+
+        try {
+
+            // execute the code
+            const loadedLibs = libNames.map((name) => require(libFn(name)))
+            models = new Function('log', ...libNames, modelCode)(log, ...loadedLibs)
+
+            // populate #component-selector, choose initialComponent
+            let initialComponent: string | null = null
+            $('#component-selector').empty()
+            for (const component in models) {
+                if (!initialComponent || component == currentComponent)
+                    initialComponent = component
+                $('<option>')
+                    .attr('value', component)
+                    .text(component)
+                    .appendTo('#component-selector')
+            }
+
+            // select initial component, trigger change, which causes it to be rendered
+            if (initialComponent)
+                $('#component-selector').val(initialComponent).trigger('change');
+
+            // message number of polys in each compoment, and construction time
+            const polys = Object.keys(models).map(
+                (name) => name + ': ' + models[name].polygons.length
+            ).join(', ')
+            message(polys + ';    ' + (now() - start) + 'ms')
+
+        } catch (e) {
+            log(e.stack)
+            message(e.toString())
         }
-        if (firstComponent)
-            $('#component-selector').val(firstComponent).trigger('change');
-    } catch (e) {
-        log(e.toString())
-        messageElt().innerText = e.toString()
-    }
+
+    }, 0) // setTimeout
 }
 
 function render() {
+
     log('rendering')
+
+    // compute viewing parameters
+    const size = viewerElt().getBoundingClientRect()
+    log('size', size.width, size.height)
+    const angle = Math.atan(ui.viewOptions.height / 2 / ui.viewOptions.distance) / Math.PI * 360
+    log('angle', angle)
+
+    // construct viewer, add to page
+    viewer = new Viewer(new CSG(), size.width, size.height, ui.viewOptions.distance, angle)
+    $(viewerElt()).empty()
+    $(viewerElt()).append(viewer.gl.canvas)
+
+    // render
     viewer.mesh = model.toMesh()
+    log('mesh triangles ' + viewer.mesh.triangles.length)
     viewer.gl.ondraw()
 }
 
+// ui calls this to indicate change in parameters
 export function change() {
     construct()
 }
 
-$(window).on('error', (error) => {
-    const e = <any>error.originalEvent
-    log('error', e.message, e.filename, e.lineno)
-})
-
 $(window).on('resize', () => {
-    size()
     render()
 })
 
@@ -159,8 +187,6 @@ $(window).on('load', () => {
     $('#component-selector').on('change', () => {
         componentName = (<HTMLSelectElement>$('#component-selector')[0]).value
         model = models[componentName]
-        messageElt().innerText = model.polygons.length
-        size()
         render();
     })
 
@@ -168,3 +194,9 @@ $(window).on('load', () => {
     $('#model-selector').val(options.model).trigger('change');
 
 })
+
+$(window).on('error', (error) => {
+    const e = <any>error.originalEvent
+    log('error', e.message, e.filename, e.lineno)
+})
+
