@@ -61,6 +61,6 @@ export function slider(options: {
         ui[options.name] = input
     }
     log('value', options.name, input.value)
-    return input.value
+    return parseFloat(input.value)
 }
     

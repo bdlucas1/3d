@@ -8,7 +8,7 @@ vase = lib.vase({
     wedges: detail,
     thickness: () => thickness,
     radius: (s) => lib.wave(0.0, 0.9, 0.25, .4)(s) - 0.1 * s,
-    base: 0.1
+    base: thickness
 })
 
 return {vase, outer: vase.outer, inner: vase.inner}
