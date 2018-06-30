@@ -18,9 +18,6 @@ function now() {
     return new Date().getTime()
 }
 
-const uiElt = () => <HTMLTableElement>$('#ui')[0]
-const topViewerElt = () => <HTMLDivElement>$('#viewer')[0]
-
 function message(msg: string) {
     $('#message')[0].innerText = msg
 }
@@ -85,7 +82,6 @@ class Model {
         if (!this.viewerElt) {
             this.read()
         } else {
-            $(this.viewerElt!).appendTo(topViewerElt())
             this.show()
             this.render() // xxx why doesn't showComponents trigger this?
             message(this.stats)
@@ -95,7 +91,7 @@ class Model {
     // show our components and ui
     show() {
 
-        log('showing')
+        log('showing', this.name)
 
         // show ui
         ui.show()
@@ -112,6 +108,10 @@ class Model {
                 .appendTo('#component-selector')
         }
         
+        // show our viewer
+        $('#viewer div').css('z-index', '0')
+        $(this.viewerElt!).css('z-index', '1')
+
         // select initial component, trigger change, which causes it to be rendered
         if (initialComponent)
             $('#component-selector').val(initialComponent).trigger('change');
@@ -167,7 +167,7 @@ class Model {
                     $(this.viewerElt).remove()
 
                 // construct viewer, add to page
-                this.viewerElt = $('<div>').appendTo(topViewerElt())[0]
+                this.viewerElt = $('<div>').appendTo('#viewer')[0]
                 const angle = Math.atan(ui.viewOptions.height / 2 / ui.viewOptions.distance) / Math.PI * 360
                 this.viewer = new Viewer(this.viewerElt, {
                     camera: {
@@ -203,7 +203,7 @@ class Model {
     }
 
     render() {
-        log('rendering')
+        log('rendering', this.name)
         this.viewer.setCsg(this.currentComponent.rotateX(90))
     }
 
