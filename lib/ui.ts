@@ -18,11 +18,35 @@ export function view(options: ViewOptions) {
     viewOptions = options
 }
 
-let ui: {[name: string]: HTMLInputElement} = {}
+export type UI = {[name: string]: HTMLInputElement}
+let ui: UI = {}
 
-export function clear() {
-    ui = {}
+export function load(u: UI) {
+    ui = u? u : {}
+}
+
+export function get(): UI {
+    return ui
+}
+
+export function show() {
     $('#ui').empty()
+    for (const name in ui) {
+        const input = ui[name]
+        const tr = $('<tr>').appendTo('#ui')
+        $('<td>').appendTo(tr).addClass('ui-name').text(name)
+        $('<td>').appendTo(tr).addClass('ui-input').append(input)
+        const valueElt = $('<td>').addClass('ui-value').appendTo(tr).text(input.value)
+        $(input)
+            .on('change', () => {
+                log('change', input.value)
+                valueElt.text(input.value)
+                editor.change()
+            })
+            .on('input', () => {
+                valueElt.text(input.value)
+            })
+    }
 }
 
 export function slider(options: {
@@ -35,6 +59,7 @@ export function slider(options: {
 }) {
     let input = ui[options.name]
     if (!input) {
+        log('new slider', options.min, options.max, options.step, options.value)
         input = <HTMLInputElement>$('<input>')
             .attr('type', 'range')
             .attr('min', options.min)
@@ -42,20 +67,7 @@ export function slider(options: {
             .attr('step', options.step || 1)
             .attr('value', options.value)
             .text(name)
-            .on('change', () => {
-                log('change', input.value)
-                value.text(input.value)
-                editor.change()
-            })
-            .on('input', () => {
-                value.text(input.value)
-            })
         [0]
-
-        const tr = $('<tr>').appendTo('#ui')
-        $('<td>').appendTo(tr).addClass('ui-name').text(options.name)
-        $('<td>').appendTo(tr).addClass('ui-input').append(input)
-        const value = $('<td>').addClass('ui-value').appendTo(tr).text(input.value)
 
         //.attr('id', 'slider-' + name
         ui[options.name] = input

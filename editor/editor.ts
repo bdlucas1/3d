@@ -19,7 +19,7 @@ function now() {
 }
 
 const uiElt = () => <HTMLTableElement>$('#ui')[0]
-const viewerElt = () => <HTMLDivElement>$('#viewer')[0]
+const topViewerElt = () => <HTMLDivElement>$('#viewer')[0]
 
 function message(msg: string) {
     $('#message')[0].innerText = msg
@@ -31,126 +31,199 @@ function libFn(name: string) {
     return path.join('../lib', name + '.js')
 }
 
-let modelName = 'N/A'
-let componentName = 'N/A'
-let modelCode = "N/A"
-let models: {[name: string]: any} = {}
-let model: any
-let modelViewer: any
+class Model {
 
-function modelFn(name: string) {
-    return path.join('../models', name, 'model.js')
-}
+    static current: Model | null = null
+    static models: {[name: string]: Model} = {}
 
-// read the file
-function read() {
+    name: string = 'N/A'
+    fn: string = 'N/A'
+    code: string = "N/A"
+    stats: string = "N/A"
+    ui: ui.UI = {}
 
-    try {
+    components: {[name: string]: any} = {}
+    currentComponent: any
+    currentComponentName: string = 'N/A'
 
-        // read the file
-        const fn = modelFn(modelName)
-        log('reading', fn)
-        const newValue = fs.readFileSync(fn).toString()
-        if (newValue != modelCode) {
-            modelCode = newValue
-            $('#component-selector').empty()
-            construct()
-        }
+    viewerElt: HTMLElement | null = null
+    viewer: any
 
-    } catch (e) {
-        log(e)
+    constructor(name: string) {
+    
+        log('adding model', name)
+        this.name = name
+        this.fn = path.join('../models', name, 'model.js')
+
+        Model.models[name] = this
+
+        // watch for changes
+        fs.watch(path.dirname(this.fn), (what, fn) => {
+            if (fn == path.basename(this.fn)) {
+                log('file change', what, fn)
+                if (this.viewerElt) {
+                    $(this.viewerElt).remove()
+                    this.viewerElt = null
+                }
+                this.ui = {}
+                if (this == Model.current) {
+                    ui.load(this.ui)
+                    this.read()
+                }
+            }
+        })
     }
-}
 
-// execute file, constructing model using csg
-function construct() {
+    // make this model the active one
+    activate() {
 
-    log('constructing')
-    message('constructing...')
+        log('activating', this.name)
+        Model.current = this
+        ui.load(this.ui)
 
-    const currentComponent = (<HTMLSelectElement>$('#component-selector')[0]).value
-    const start = now()
+        // read and construct viewer if needed
+        if (!this.viewerElt) {
+            this.read()
+        } else {
+            $(this.viewerElt!).appendTo(topViewerElt())
+            this.show()
+            this.render() // xxx why doesn't showComponents trigger this?
+            message(this.stats)
+        }
+    }
 
-    // defer so we will see the "constructing..." message
-    setTimeout(() => {
+    // show our components and ui
+    show() {
 
+        log('showing')
+
+        // show ui
+        ui.show()
+
+        // populate #component-selector, choose initialComponent
+        let initialComponent: string | null = null
+        $('#component-selector').empty()
+        for (const component in this.components) {
+            if (!initialComponent || component == this.currentComponentName)
+                initialComponent = component
+            $('<option>')
+                .attr('value', component)
+                .text(component)
+                .appendTo('#component-selector')
+        }
+        
+        // select initial component, trigger change, which causes it to be rendered
+        if (initialComponent)
+            $('#component-selector').val(initialComponent).trigger('change');
+    }
+
+    // read the file
+    read() {
         try {
+            log('reading', this.fn)
+            const newValue = fs.readFileSync(this.fn).toString()
+            if (newValue != this.code) {
+                this.code = newValue
+                $('#component-selector').empty()
+                this.construct()
+            }
+        } catch (e) {
+            log(e)
+        }
+    }
 
-            // execute the code
-            const loadedLibs = libNames.map((name) => require(libFn(name)))
-            models = new Function('log', 'CSG', ...libNames, modelCode)(log, CSG, ...loadedLibs)
+    // execute file, constructing model using csg
+    construct() {
 
-            // populate #component-selector, choose initialComponent
-            let initialComponent: string | null = null
-            $('#component-selector').empty()
-            for (const component in models) {
-                if (!initialComponent || component == currentComponent)
-                    initialComponent = component
-                $('<option>')
-                    .attr('value', component)
-                    .text(component)
-                    .appendTo('#component-selector')
+        log('constructing')
+        message('constructing...')
+
+        const start = now()
+
+        // defer so we will see the "constructing..." message
+        setTimeout(() => {
+
+            try {
+
+                // execute the code
+                const loadedLibs = libNames.map((name) => require(libFn(name)))
+                this.components = new Function('log', 'CSG', ...libNames, this.code)(log, CSG, ...loadedLibs)
+                this.ui = ui.get()
+
+                // message number of polys in each compoment, and construction time
+                this.stats = Object.keys(this.components).map(
+                    (name) => name + ': ' + this.components[name].polygons.length
+                ).join(', ')
+                message(this.stats + ';    ' + (now() - start) + 'ms')
+
+                // remove existing viewer if any
+                // xxx we need to do this because constructing the
+                // model may set the viewOptions, which we pass to the
+                // Viewer on construction. But this resets the view
+                // angle as well. Can we either re-use the Viewer and
+                // update the options instead, or copy the view angle
+                // over to the new Viewer?
+                if (this.viewerElt)
+                    $(this.viewerElt).remove()
+
+                // construct viewer, add to page
+                this.viewerElt = $('<div>').appendTo(topViewerElt())[0]
+                const angle = Math.atan(ui.viewOptions.height / 2 / ui.viewOptions.distance) / Math.PI * 360
+                this.viewer = new Viewer(this.viewerElt, {
+                    camera: {
+                        fov: angle,
+                        angle: {x: -60, y: 0, z: 0},
+                        position: {x: 0, y: 0, z: ui.viewOptions.distance}
+                    },
+                    plate: {
+                        draw: false,
+                    },
+                    solid: {
+                        lines: true,
+                        overlay: false,
+                        smooth: false, // smooth lighting
+                        faceColor: {r: 1.0, g: 1.0, b: 1.0, a: 1.0}
+                    },
+                    /*  bug: Viewer doesn't apply background options here; worked around it above
+                        background: {
+                        color: {r: 1.0, g: 1.0, b: 1.0, a: 0.0}
+                        }
+                    */
+                })
+
+                // show our components and ui
+                this.show()
+
+            } catch (e) {
+                log(e.stack)
+                message(e.toString())
             }
 
-            // message number of polys in each compoment, and construction time
-            const polys = Object.keys(models).map(
-                (name) => name + ': ' + models[name].polygons.length
-            ).join(', ')
-            message(polys + ';    ' + (now() - start) + 'ms')
+        }, 0) // setTimeout
+    }
 
-            // compute viewing parameters
-            const size = viewerElt().getBoundingClientRect()
-            const angle = Math.atan(ui.viewOptions.height / 2 / ui.viewOptions.distance) / Math.PI * 360
-            log('size', size.width, size.height, 'angle', angle)
+    render() {
+        log('rendering')
+        this.viewer.setCsg(this.currentComponent.rotateX(90))
+    }
 
-            // construct viewer, add to page
-            $(viewerElt()).empty()
-            modelViewer = new Viewer(viewerElt(), {
-                camera: {
-                    fov: angle,
-                    angle: {x: -60, y: 0, z: 0},
-                    position: {x: 0, y: 0, z: ui.viewOptions.distance}
-                },
-                plate: {
-                    draw: false,
-                },
-                solid: {
-                    lines: true,
-                    overlay: false,
-                    smooth: false, // smooth lighting
-                    faceColor: {r: 1.0, g: 1.0, b: 1.0, a: 1.0}
-                },
-                /*  bug: Viewer doesn't apply background options here; worked around it above
-                background: {
-                    color: {r: 1.0, g: 1.0, b: 1.0, a: 0.0}
-                }
-                */
-            })
-
-            // select initial component, trigger change, which causes it to be rendered
-            if (initialComponent)
-                $('#component-selector').val(initialComponent).trigger('change');
-
-        } catch (e) {
-            log(e.stack)
-            message(e.toString())
-        }
-
-    }, 0) // setTimeout
-}
-
-function render() {
-    log('rendering')
-    modelViewer.setCsg(model.rotateX(90))
+    setComponent(componentName: string) {
+        this.currentComponent = this.components[componentName]
+        this.currentComponentName = componentName
+        this.render();
+    }
 }
 
 // ui calls this to indicate change in parameters
 export function change() {
-    construct()
+    if (Model.current)
+        Model.current.construct()
 }
 
 $(window).on('resize', () => {
-    render()
+    log('resize')
+    if (Model.current)
+        Model.current.render()
 })
 
 $(window).on('load', () => {
@@ -163,48 +236,34 @@ $(window).on('load', () => {
     const options = commandLineArgs(optionDefinitions, {argv: remote.process.argv.slice(2)})
     log(options)
 
-    function watch(watchFn: string, watchModel: string | null) {
-        fs.watch(path.dirname(watchFn), (what, fn) => {
-            log('file change', what, fn)
-            if (fn == path.basename(watchFn) && (!watchModel || modelName == watchModel)) {
-                try {
-                    delete require.cache[require.resolve(fn)]
-                } catch(e) {
-                    //
-                }
-                read()
-            }
-        })
-    }
-
     // respond to lib changes
-    libNames.forEach((name) => watch(libFn(name), null))
+    //libNames.forEach((name) => watch(libFn(name), null))
 
     // read model directory, populate menu
+    log('reading ../models')
     fs.readdirSync('../models').forEach(fn => {
         $('<option>')
             .attr('value', fn)
             .text(fn)
             .appendTo('#model-selector')
-        watch(modelFn(fn), fn)
+        new Model(fn)
     })
 
     // respond to model selector changes
     $('#model-selector').on('change', () => {
-        modelName = (<HTMLSelectElement>$('#model-selector')[0]).value
-        modelCode = ''
-        ui.clear()
-        read()
+        const name = (<HTMLSelectElement>$('#model-selector')[0]).value
+        Model.models[name].activate()
     })
 
     // respond to component selector changes
     $('#component-selector').on('change', () => {
-        componentName = (<HTMLSelectElement>$('#component-selector')[0]).value
-        model = models[componentName]
-        render();
+        const componentName = (<HTMLSelectElement>$('#component-selector')[0]).value
+        if (Model.current)
+            Model.current.setComponent(componentName)
     })
 
     // load initial model
+    log('loading initial model')
     $('#model-selector').val(options.model).trigger('change');
 
 })
