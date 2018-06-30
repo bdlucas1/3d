@@ -3,18 +3,19 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as ui from '../lib/ui'
 import * as commandLineArgs from 'command-line-args'
-import {remote} from 'electron'
 
+import {remote} from 'electron'
 const log = remote.getGlobal('console').log
+
+const CSG = require('@jscad/CSG').CSG
+const Viewer = require('@jscad/openjscad/src/ui/viewer/jscad-viewer')
+// work around bug: Viewer constructor doesn't apply background from options
+const viewerDefaults = Viewer.defaults()
+viewerDefaults.background.color = {r: 1.0, g: 1.0, b: 1.0, a: 0.0}
+Viewer.defaults = () => viewerDefaults
 
 function now() {
     return new Date().getTime()
-}
-
-// trivial type definitions for viewer.js and csg.js loaded in index.html
-declare class CSG {}
-declare class Viewer {
-    constructor(csg: CSG, width: number, height: number, depth: number, angle: number)
 }
 
 const uiElt = () => <HTMLTableElement>$('#ui')[0]
@@ -35,7 +36,7 @@ let componentName = 'N/A'
 let modelCode = "N/A"
 let models: {[name: string]: any} = {}
 let model: any
-let viewer: any
+let modelViewer: any
 
 function modelFn(name: string) {
     return path.join('../models', name, 'model.js')
@@ -77,7 +78,7 @@ function construct() {
 
             // execute the code
             const loadedLibs = libNames.map((name) => require(libFn(name)))
-            models = new Function('log', ...libNames, modelCode)(log, ...loadedLibs)
+            models = new Function('log', 'CSG', ...libNames, modelCode)(log, CSG, ...loadedLibs)
 
             // populate #component-selector, choose initialComponent
             let initialComponent: string | null = null
@@ -91,15 +92,44 @@ function construct() {
                     .appendTo('#component-selector')
             }
 
-            // select initial component, trigger change, which causes it to be rendered
-            if (initialComponent)
-                $('#component-selector').val(initialComponent).trigger('change');
-
             // message number of polys in each compoment, and construction time
             const polys = Object.keys(models).map(
                 (name) => name + ': ' + models[name].polygons.length
             ).join(', ')
             message(polys + ';    ' + (now() - start) + 'ms')
+
+            // compute viewing parameters
+            const size = viewerElt().getBoundingClientRect()
+            const angle = Math.atan(ui.viewOptions.height / 2 / ui.viewOptions.distance) / Math.PI * 360
+            log('size', size.width, size.height, 'angle', angle)
+
+            // construct viewer, add to page
+            $(viewerElt()).empty()
+            modelViewer = new Viewer(viewerElt(), {
+                camera: {
+                    fov: angle,
+                    angle: {x: -60, y: 0, z: 0},
+                    position: {x: 0, y: 0, z: ui.viewOptions.distance}
+                },
+                plate: {
+                    draw: false,
+                },
+                solid: {
+                    lines: true,
+                    overlay: false,
+                    smooth: false, // smooth lighting
+                    faceColor: {r: 1.0, g: 1.0, b: 1.0, a: 1.0}
+                },
+                /*  bug: Viewer doesn't apply background options here; worked around it above
+                background: {
+                    color: {r: 1.0, g: 1.0, b: 1.0, a: 0.0}
+                }
+                */
+            })
+
+            // select initial component, trigger change, which causes it to be rendered
+            if (initialComponent)
+                $('#component-selector').val(initialComponent).trigger('change');
 
         } catch (e) {
             log(e.stack)
@@ -110,24 +140,8 @@ function construct() {
 }
 
 function render() {
-
     log('rendering')
-
-    // compute viewing parameters
-    const size = viewerElt().getBoundingClientRect()
-    log('size', size.width, size.height)
-    const angle = Math.atan(ui.viewOptions.height / 2 / ui.viewOptions.distance) / Math.PI * 360
-    log('angle', angle)
-
-    // construct viewer, add to page
-    viewer = new Viewer(new CSG(), size.width, size.height, ui.viewOptions.distance, angle)
-    $(viewerElt()).empty()
-    $(viewerElt()).append(viewer.gl.canvas)
-
-    // render
-    viewer.mesh = model.toMesh()
-    log('mesh triangles ' + viewer.mesh.triangles.length)
-    viewer.gl.ondraw()
+    modelViewer.setCsg(model.rotateX(90))
 }
 
 // ui calls this to indicate change in parameters

@@ -14,6 +14,8 @@
     "electron": "^2.0.0"
   },
   "dependencies": {
+    "@jscad/csg": "^0.6.0",
+    "@jscad/openjscad": "^1.6.1",
     "@types/command-line-args": "^5.0.0",
     "@types/jquery": "^3.3.4",
     "command-line-args": "^5.0.2",
