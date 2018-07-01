@@ -9,10 +9,6 @@ const log = remote.getGlobal('console').log
 
 const CSG = require('@jscad/CSG').CSG
 const Viewer = require('@jscad/openjscad/src/ui/viewer/jscad-viewer')
-// work around bug: Viewer constructor doesn't apply background from options
-const viewerDefaults = Viewer.defaults()
-viewerDefaults.background.color = {r: 1.0, g: 1.0, b: 1.0, a: 0.0}
-Viewer.defaults = () => viewerDefaults
 
 function now() {
     return new Date().getTime()
@@ -32,19 +28,19 @@ class Model {
 
     static current: Model | null = null
     static models: {[name: string]: Model} = {}
+    static viewer: any
 
     name: string = 'N/A'
     fn: string = 'N/A'
+    fileChanged: boolean = true
     code: string = "N/A"
     stats: string = "N/A"
-    ui: ui.UI = {}
+    settings: ui.Settings = {}
+    viewOptions: ui.ViewOptions | null = null
 
-    components: {[name: string]: any} = {}
+    components: {[name: string]: any} | null = null
     currentComponent: any
     currentComponentName: string = 'N/A'
-
-    viewerElt: HTMLElement | null = null
-    viewer: any
 
     constructor(name: string) {
     
@@ -58,15 +54,10 @@ class Model {
         fs.watch(path.dirname(this.fn), (what, fn) => {
             if (fn == path.basename(this.fn)) {
                 log('file change', what, fn)
-                if (this.viewerElt) {
-                    $(this.viewerElt).remove()
-                    this.viewerElt = null
-                }
-                this.ui = {}
-                if (this == Model.current) {
-                    ui.load(this.ui)
+                if (this == Model.current)
                     this.read()
-                }
+                else
+                    this.fileChanged = true
             }
         })
     }
@@ -76,55 +67,27 @@ class Model {
 
         log('activating', this.name)
         Model.current = this
-        ui.load(this.ui)
 
-        // read and construct viewer if needed
-        if (!this.viewerElt) {
+        // read if needed, else just show
+        if (!this.components || this.fileChanged) {
             this.read()
         } else {
+            ui.load(this.settings)
             this.show()
-            this.render() // xxx why doesn't showComponents trigger this?
             message(this.stats)
         }
-    }
-
-    // show our components and ui
-    show() {
-
-        log('showing', this.name)
-
-        // show ui
-        ui.show()
-
-        // populate #component-selector, choose initialComponent
-        let initialComponent: string | null = null
-        $('#component-selector').empty()
-        for (const component in this.components) {
-            if (!initialComponent || component == this.currentComponentName)
-                initialComponent = component
-            $('<option>')
-                .attr('value', component)
-                .text(component)
-                .appendTo('#component-selector')
-        }
-        
-        // show our viewer
-        $('#viewer div').css('z-index', '0')
-        $(this.viewerElt!).css('z-index', '1')
-
-        // select initial component, trigger change, which causes it to be rendered
-        if (initialComponent)
-            $('#component-selector').val(initialComponent).trigger('change');
     }
 
     // read the file
     read() {
         try {
             log('reading', this.fn)
+            this.fileChanged = false
             const newValue = fs.readFileSync(this.fn).toString()
             if (newValue != this.code) {
                 this.code = newValue
                 $('#component-selector').empty()
+                this.settings = {}
                 this.construct()
             }
         } catch (e) {
@@ -147,51 +110,18 @@ class Model {
 
                 // execute the code
                 const loadedLibs = libNames.map((name) => require(libFn(name)))
-                this.components = new Function('log', 'CSG', ...libNames, this.code)(log, CSG, ...loadedLibs)
-                this.ui = ui.get()
+                ui.load(this.settings)
+                this.components = new Function('log', 'CSG', ...libNames, this.code)(log, CSG, ...loadedLibs);
+                this.settings = ui.settings
+                this.viewOptions = ui.viewOptions
 
                 // message number of polys in each compoment, and construction time
-                this.stats = Object.keys(this.components).map(
-                    (name) => name + ': ' + this.components[name].polygons.length
+                this.stats = Object.keys(this.components!).map(
+                    (name) => name + ': ' + this.components![name].polygons.length
                 ).join(', ')
                 message(this.stats + ';    ' + (now() - start) + 'ms')
 
-                // remove existing viewer if any
-                // xxx we need to do this because constructing the
-                // model may set the viewOptions, which we pass to the
-                // Viewer on construction. But this resets the view
-                // angle as well. Can we either re-use the Viewer and
-                // update the options instead, or copy the view angle
-                // over to the new Viewer?
-                if (this.viewerElt)
-                    $(this.viewerElt).remove()
-
-                // construct viewer, add to page
-                this.viewerElt = $('<div>').appendTo('#viewer')[0]
-                const angle = Math.atan(ui.viewOptions.height / 2 / ui.viewOptions.distance) / Math.PI * 360
-                this.viewer = new Viewer(this.viewerElt, {
-                    camera: {
-                        fov: angle,
-                        angle: {x: -60, y: 0, z: 0},
-                        position: {x: 0, y: 0, z: ui.viewOptions.distance}
-                    },
-                    plate: {
-                        draw: false,
-                    },
-                    solid: {
-                        lines: true,
-                        overlay: false,
-                        smooth: false, // smooth lighting
-                        faceColor: {r: 1.0, g: 1.0, b: 1.0, a: 1.0}
-                    },
-                    /*  bug: Viewer doesn't apply background options here; worked around it above
-                        background: {
-                        color: {r: 1.0, g: 1.0, b: 1.0, a: 0.0}
-                        }
-                    */
-                })
-
-                // show our components and ui
+                // show our components, ui, and model
                 this.show()
 
             } catch (e) {
@@ -202,15 +132,46 @@ class Model {
         }, 0) // setTimeout
     }
 
-    render() {
-        log('rendering', this.name)
-        this.viewer.setCsg(this.currentComponent.rotateX(90))
+    // show our components and ui
+    show() {
+
+        log('showing', this.name)
+
+        // show ui
+        ui.show()
+
+        // populate #component-selector, choose initialComponent
+        let initialComponent: string | null = null
+        $('#component-selector').empty()
+        for (const component in this.components!) {
+            if (!initialComponent || component == this.currentComponentName)
+                initialComponent = component
+            $('<option>')
+                .attr('value', component)
+                .text(component)
+                .appendTo('#component-selector')
+        }
+
+        // set up Viewer viewport
+        const angle = Math.atan(this.viewOptions!.height / 2 / this.viewOptions!.distance) / Math.PI * 360
+        Model.viewer.setCameraOptions({
+            fov: angle,
+            angle: {x: -60, y: 0, z: 0},
+            position: {x: 0, y: 0, z: this.viewOptions!.distance}
+        })
+        Model.viewer.resetCamera()
+        Model.viewer.handleResize()
+
+        // select initial component, trigger change, which causes it to be rendered via setComponent
+        if (initialComponent)
+            $('#component-selector').val(initialComponent).trigger('change');
     }
 
     setComponent(componentName: string) {
-        this.currentComponent = this.components[componentName]
+        log('setComponent', this.name, componentName)
+        this.currentComponent = this.components![componentName]
         this.currentComponentName = componentName
-        this.render();
+        Model.viewer.setCsg(this.currentComponent.rotateX(90))
     }
 }
 
@@ -219,12 +180,6 @@ export function change() {
     if (Model.current)
         Model.current.construct()
 }
-
-$(window).on('resize', () => {
-    log('resize')
-    if (Model.current)
-        Model.current.render()
-})
 
 $(window).on('load', () => {
 
@@ -236,9 +191,6 @@ $(window).on('load', () => {
     const options = commandLineArgs(optionDefinitions, {argv: remote.process.argv.slice(2)})
     log(options)
 
-    // respond to lib changes
-    //libNames.forEach((name) => watch(libFn(name), null))
-
     // read model directory, populate menu
     log('reading ../models')
     fs.readdirSync('../models').forEach(fn => {
@@ -247,6 +199,28 @@ $(window).on('load', () => {
             .text(fn)
             .appendTo('#model-selector')
         new Model(fn)
+    })
+
+    // add viewer
+    // work around bug: Viewer constructor doesn't apply background from options
+    const viewerDefaults = Viewer.defaults()
+    viewerDefaults.background.color = {r: 1.0, g: 1.0, b: 1.0, a: 0.0}
+    Viewer.defaults = () => viewerDefaults
+    Model.viewer = new Viewer($('#viewer')[0], {
+        plate: {
+            draw: false,
+        },
+        solid: {
+            lines: true,
+            overlay: false,
+            smooth: false, // smooth lighting
+            faceColor: {r: 1.0, g: 1.0, b: 1.0, a: 1.0}
+        },
+        /*  bug: Viewer doesn't apply background options here; worked around it above
+            background: {
+            color: {r: 1.0, g: 1.0, b: 1.0, a: 0.0}
+            }
+        */
     })
 
     // respond to model selector changes
@@ -262,7 +236,7 @@ $(window).on('load', () => {
             Model.current.setComponent(componentName)
     })
 
-    // load initial model
+    // load initial model by triggering change which calls activate() on the model
     log('loading initial model')
     $('#model-selector').val(options.model).trigger('change');
 

@@ -4,35 +4,32 @@ import * as editor from '../editor/editor'
 
 const log = remote.getGlobal('console').log
 
-type ViewOptions = {
+export type ViewOptions = {
     distance: number,
     height: number
 }
+
+export type Settings = {[name: string]: HTMLInputElement}
 
 export let viewOptions: ViewOptions = {
     distance: 5,
     height: 2
 }
 
-export function view(options: ViewOptions) {
-    viewOptions = options
+export let settings: Settings = {}
+
+export function load(_settings: Settings) {
+    settings = _settings
 }
 
-export type UI = {[name: string]: HTMLInputElement}
-let ui: UI = {}
-
-export function load(u: UI) {
-    ui = u? u : {}
-}
-
-export function get(): UI {
-    return ui
+export function view(_viewOptions: ViewOptions) {
+    viewOptions = _viewOptions
 }
 
 export function show() {
     $('#ui').empty()
-    for (const name in ui) {
-        const input = ui[name]
+    for (const name in settings) {
+        const input = settings[name]
         const tr = $('<tr>').appendTo('#ui')
         $('<td>').appendTo(tr).addClass('ui-name').text(name)
         $('<td>').appendTo(tr).addClass('ui-input').append(input)
@@ -57,7 +54,7 @@ export function slider(options: {
     value: number,
     //increment: number,
 }) {
-    let input = ui[options.name]
+    let input = settings[options.name]
     if (!input) {
         log('new slider', options.min, options.max, options.step, options.value)
         input = <HTMLInputElement>$('<input>')
@@ -70,7 +67,7 @@ export function slider(options: {
         [0]
 
         //.attr('id', 'slider-' + name
-        ui[options.name] = input
+        settings[options.name] = input
     }
     log('value', options.name, input.value)
     return parseFloat(input.value)
