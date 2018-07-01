@@ -121,6 +121,9 @@ class Model {
                 // show our components, ui, and model
                 this.show()
 
+                // now's a good time to schedule a gc
+                setTimeout(() => (<any>global.gc)(true), 0)
+
             } catch (e) {
                 log(e.stack)
                 message(e.toString())
