@@ -184,20 +184,29 @@ $(window).on('load', () => {
     // select model
     log('argv', remote.process.argv)
     const optionDefinitions = [
-        {name: 'model', alias: 'm', type: String, defaultValue: 'demo'}
+        {name: 'model', alias: 'm', type: String}
     ]
     const options = commandLineArgs(optionDefinitions, {argv: remote.process.argv.slice(2)})
     log(options)
 
     // read model directory, populate menu
     log('reading ../models')
-    fs.readdirSync('../models').forEach(fn => {
+    let newestMtime = 0
+    let newestModel: string
+    const dn = '../models'
+    fs.readdirSync(dn).forEach(fn => {
         $('<option>')
             .attr('value', fn)
             .text(fn)
             .appendTo('#model-selector')
         new Model(fn)
+        const mtime = fs.statSync(path.join(dn, fn)).mtimeMs
+        if (mtime > newestMtime) {
+            newestMtime = mtime
+            newestModel = fn
+        }
     })
+    options.model = options.model || newestModel!
 
     // add viewer
     // work around bug: Viewer constructor doesn't apply background from options
