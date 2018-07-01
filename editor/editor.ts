@@ -189,7 +189,11 @@ $(window).on('load', () => {
     const optionDefinitions = [
         {name: 'model', alias: 'm', type: String}
     ]
-    const options = commandLineArgs(optionDefinitions, {argv: remote.process.argv.slice(2)})
+    // ignore electron flags
+    let argv = remote.process.argv.slice(1)
+    while (argv[0].startsWith('-'))
+        argv = argv.slice(1)
+    const options = commandLineArgs(optionDefinitions, {argv: argv.slice(1)})
     log(options)
 
     // read model directory, populate menu
