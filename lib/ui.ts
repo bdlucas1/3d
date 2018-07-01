@@ -9,41 +9,51 @@ export type ViewOptions = {
     height: number
 }
 
-export type Settings = {[name: string]: HTMLInputElement}
+export class Settings {
 
-export let viewOptions: ViewOptions = {
-    distance: 5,
-    height: 2
-}
+    static current: Settings | null = null
 
-export let settings: Settings = {}
-
-export function load(_settings: Settings) {
-    settings = _settings
-}
-
-export function view(_viewOptions: ViewOptions) {
-    viewOptions = _viewOptions
-}
-
-export function show() {
-    $('#ui').empty()
-    for (const name in settings) {
-        const input = settings[name]
-        const tr = $('<tr>').appendTo('#ui')
-        $('<td>').appendTo(tr).addClass('ui-name').text(name)
-        $('<td>').appendTo(tr).addClass('ui-input').append(input)
-        const valueElt = $('<td>').addClass('ui-value').appendTo(tr).text(input.value)
-        $(input)
-            .on('change', () => {
-                log('change', input.value)
-                valueElt.text(input.value)
-                editor.change()
-            })
-            .on('input', () => {
-                valueElt.text(input.value)
-            })
+    static defaultViewOptions = {
+        distance: 5,
+        height: 2
     }
+    
+    viewOptions = Settings.defaultViewOptions
+
+    inputs: {[name: string]: HTMLInputElement} = {}
+
+    activate() {
+
+        Settings.current = this
+
+        $('#ui').empty()
+        for (const name in this.inputs) {
+            const input = this.inputs[name]
+            const tr = $('<tr>').appendTo('#ui')
+            $('<td>').appendTo(tr).addClass('ui-name').text(name)
+            $('<td>').appendTo(tr).addClass('ui-input').append(input)
+            const valueElt = $('<td>').addClass('ui-value').appendTo(tr).text(input.value)
+            $(input)
+                .on('change', () => {
+                    log('change', input.value)
+                    valueElt.text(input.value)
+                    editor.change()
+                })
+                .on('input', () => {
+                    valueElt.text(input.value)
+                })
+        }
+    }
+
+    clear() {
+        this.inputs = {}
+    }
+}
+    
+export function view(_viewOptions: ViewOptions) {
+    if (!Settings.current)
+        return
+    Settings.current.viewOptions = _viewOptions
 }
 
 export function slider(options: {
@@ -54,7 +64,11 @@ export function slider(options: {
     value: number,
     //increment: number,
 }) {
-    let input = settings[options.name]
+
+    if (!Settings.current)
+        return
+
+    let input = Settings.current.inputs[options.name]
     if (!input) {
         log('new slider', options.min, options.max, options.step, options.value)
         input = <HTMLInputElement>$('<input>')
@@ -67,7 +81,7 @@ export function slider(options: {
         [0]
 
         //.attr('id', 'slider-' + name
-        settings[options.name] = input
+        Settings.current.inputs[options.name] = input
     }
     log('value', options.name, input.value)
     return parseFloat(input.value)

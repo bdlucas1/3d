@@ -35,8 +35,7 @@ class Model {
     fileChanged: boolean = true
     code: string = "N/A"
     stats: string = "N/A"
-    settings: ui.Settings = {}
-    viewOptions: ui.ViewOptions | null = null
+    settings = new ui.Settings()
 
     components: {[name: string]: any} | null = null
     currentComponent: any
@@ -72,7 +71,7 @@ class Model {
         if (!this.components || this.fileChanged) {
             this.read()
         } else {
-            ui.load(this.settings)
+            this.settings.activate()
             this.show()
             message(this.stats)
         }
@@ -87,7 +86,7 @@ class Model {
             if (newValue != this.code) {
                 this.code = newValue
                 $('#component-selector').empty()
-                this.settings = {}
+                this.settings.clear()
                 this.construct()
             }
         } catch (e) {
@@ -110,10 +109,8 @@ class Model {
 
                 // execute the code
                 const loadedLibs = libNames.map((name) => require(libFn(name)))
-                ui.load(this.settings)
+                this.settings.activate() // assert already active?
                 this.components = new Function('log', 'CSG', ...libNames, this.code)(log, CSG, ...loadedLibs);
-                this.settings = ui.settings
-                this.viewOptions = ui.viewOptions
 
                 // message number of polys in each compoment, and construction time
                 this.stats = Object.keys(this.components!).map(
@@ -138,7 +135,7 @@ class Model {
         log('showing', this.name)
 
         // show ui
-        ui.show()
+        this.settings.activate()
 
         // populate #component-selector, choose initialComponent
         let initialComponent: string | null = null
@@ -153,11 +150,12 @@ class Model {
         }
 
         // set up Viewer viewport
-        const angle = Math.atan(this.viewOptions!.height / 2 / this.viewOptions!.distance) / Math.PI * 360
+        let viewOptions = this.settings.viewOptions
+        const angle = Math.atan(viewOptions.height / 2 / viewOptions.distance) / Math.PI * 360
         Model.viewer.setCameraOptions({
             fov: angle,
             angle: {x: -60, y: 0, z: 0},
-            position: {x: 0, y: 0, z: this.viewOptions!.distance}
+            position: {x: 0, y: 0, z: viewOptions.distance}
         })
         Model.viewer.resetCamera()
         Model.viewer.handleResize()
