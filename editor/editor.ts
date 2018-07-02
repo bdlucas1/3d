@@ -1,7 +1,8 @@
 import * as $ from 'jquery'
 import * as fs from 'fs'
 import * as path from 'path'
-import * as ui from '../lib/ui'
+import * as ui from './ui'
+
 import * as commandLineArgs from 'command-line-args'
 
 import {remote} from 'electron'
@@ -16,12 +17,6 @@ function now() {
 
 function message(msg: string) {
     $('#message')[0].innerText = msg
-}
-
-const libNames = ['lib', 'ui']
-
-function libFn(name: string) {
-    return path.join('../lib', name + '.js')
 }
 
 class Model {
@@ -126,7 +121,8 @@ class Model {
             try {
 
                 // execute the code
-                const loadedLibs = libNames.map((name) => require(libFn(name)))
+                const libNames = ['ui', 'lib']
+                const loadedLibs = libNames.map((name) => require('./' + name + '.js'))
                 this.settings.activate() // assert already active?
                 this.components = new Function('log', 'CSG', ...libNames, this.code)(log, CSG, ...loadedLibs);
 
@@ -238,7 +234,7 @@ $(window).on('load', () => {
     log(options)
 
     // read model directory, populate menu
-    log('reading ../models')
+    log('reading models')
     let newestMtime = 0
     let newestModel: string
     const dn = '../models'

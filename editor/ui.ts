@@ -99,4 +99,3 @@ export function slider(options: {
     log('value', options.name, input.value)
     return parseFloat(input.value)
 }
-    
