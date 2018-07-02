@@ -9,6 +9,8 @@ export type ViewOptions = {
     height: number
 }
 
+export type Variant = {[name: string]: number}
+
 export class Settings {
 
     static current: Settings | null = null
@@ -20,6 +22,7 @@ export class Settings {
     
     viewOptions = Settings.defaultViewOptions
 
+    defaultVariant: Variant = {}
     inputs: {[name: string]: HTMLInputElement} = {}
 
     activate() {
@@ -47,6 +50,12 @@ export class Settings {
 
     clear() {
         this.inputs = {}
+        this.defaultVariant = {}
+    }
+
+    setVariant(variant: Variant) {
+        for (const name in variant)
+            this.inputs[name].value = variant[name].toString()
     }
 }
     
@@ -68,6 +77,10 @@ export function slider(options: {
     if (!Settings.current)
         return
 
+    // remember default settings
+    Settings.current.defaultVariant[options.name] = options.value
+
+    // create <input> element
     let input = Settings.current.inputs[options.name]
     if (!input) {
         log('new slider', options.min, options.max, options.step, options.value)

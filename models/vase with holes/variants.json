@@ -1,0 +1,12 @@
+{
+    "big holes": {
+        "detail": 20,
+        "thickness": 0.02,
+        "n horizontal": 7,
+        "n vertical": 9,
+        "h skew": 0.29,
+        "v min": -0.85,
+        "v max": 0.85,
+        "hole diameter": 0.4
+    }
+}

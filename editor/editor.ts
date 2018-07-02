@@ -31,11 +31,15 @@ class Model {
     static viewer: any
 
     name: string = 'N/A'
-    fn: string = 'N/A'
+    modelFn: string = 'N/A'
     fileChanged: boolean = true
     code: string = "N/A"
     stats: string = "N/A"
     settings = new ui.Settings()
+
+    variantsFn: string = 'N/A'
+    variants: {[name: string]: ui.Variant} = {}
+    currentVariantName: string = 'N/A'
 
     components: {[name: string]: any} | null = null
     currentComponent: any
@@ -45,13 +49,14 @@ class Model {
     
         log('adding model', name)
         this.name = name
-        this.fn = path.join('../models', name, 'model.js')
+        this.modelFn = path.join('../models', name, 'model.js')
+        this.variantsFn = path.join('../models', name, 'variants.json')
 
         Model.models[name] = this
 
         // watch for changes
-        fs.watch(path.dirname(this.fn), (what, fn) => {
-            if (fn == path.basename(this.fn)) {
+        fs.watch(path.dirname(this.modelFn), (what, fn) => {
+            if (fn == path.basename(this.modelFn)) {
                 log('file change', what, fn)
                 if (this == Model.current)
                     this.read()
@@ -79,16 +84,28 @@ class Model {
 
     // read the file
     read() {
+
         try {
-            log('reading', this.fn)
+
+            // read model file
+            log('reading', this.modelFn)
             this.fileChanged = false
-            const newValue = fs.readFileSync(this.fn).toString()
+            const newValue = fs.readFileSync(this.modelFn).toString()
             if (newValue != this.code) {
                 this.code = newValue
                 $('#component-selector').empty()
                 this.settings.clear()
                 this.construct()
             }
+
+            // read variants file
+            log('reading', this.variantsFn)
+            this.variants = {}
+            this.variants['default'] = {}
+            const variants = JSON.parse(fs.readFileSync(this.variantsFn).toString())
+            for (const name in variants)
+                this.variants[name] = variants[name]
+
         } catch (e) {
             log(e)
         }
@@ -112,13 +129,16 @@ class Model {
                 this.settings.activate() // assert already active?
                 this.components = new Function('log', 'CSG', ...libNames, this.code)(log, CSG, ...loadedLibs);
 
+                // remember default settings
+                this.variants['default'] = this.settings.defaultVariant
+
                 // message number of polys in each compoment, and construction time
                 this.stats = Object.keys(this.components!).map(
                     (name) => name + ': ' + this.components![name].polygons.length
                 ).join(', ')
                 message(this.stats + ';    ' + (now() - start) + 'ms')
 
-                // show our components, ui, and model
+                // show our components, variants, ui, and model
                 this.show()
 
                 // now's a good time to schedule a gc
@@ -139,6 +159,20 @@ class Model {
 
         // show ui
         this.settings.activate()
+
+        // populate #variant-selctor, choosing initial variant
+        let initialVariant: string | null = null
+        $('#variant-selector').empty()
+        for (const variant in this.variants!) {
+            if (!initialVariant || variant == this.currentVariantName)
+                initialVariant = variant
+            $('<option>')
+                .attr('value', variant)
+                .text(variant)
+                .appendTo('#variant-selector')
+        }
+        if (initialVariant)
+            $('#variant-selector').val(initialVariant)
 
         // populate #component-selector, choose initialComponent
         let initialComponent: string | null = null
@@ -166,6 +200,13 @@ class Model {
         // select initial component, trigger change, which causes it to be rendered via setComponent
         if (initialComponent)
             $('#component-selector').val(initialComponent).trigger('change');
+    }
+
+    setVariant(variantName: string) {
+        log('setVariant', this.name, variantName)
+        this.currentVariantName = variantName
+        this.settings.setVariant(this.variants[variantName])
+        this.construct()
     }
 
     setComponent(componentName: string) {
@@ -241,6 +282,13 @@ $(window).on('load', () => {
     $('#model-selector').on('change', () => {
         const name = (<HTMLSelectElement>$('#model-selector')[0]).value
         Model.models[name].activate()
+    })
+
+    // respond to variant selector changes
+    $('#variant-selector').on('change', () => {
+        const variantName = (<HTMLSelectElement>$('#variant-selector')[0]).value
+        if (Model.current)
+            Model.current.setVariant(variantName)
     })
 
     // respond to component selector changes
