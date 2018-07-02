@@ -31,19 +31,18 @@ class Model {
     static viewer: any
 
     name: string = 'N/A'
-    modelFn: string = 'N/A'
-    fileChanged: boolean = true
-    code: string = "N/A"
     stats: string = "N/A"
     settings = new ui.Settings()
 
     variantsFn: string = 'N/A'
     variants: {[name: string]: ui.Variant} = {}
-    currentVariantName: string = 'N/A'
+    currentVariant: string = 'N/A'
 
+    modelFn: string = 'N/A'
+    fileChanged: boolean = true
+    code: string = "N/A"
     components: {[name: string]: any} | null = null
-    currentComponent: any
-    currentComponentName: string = 'N/A'
+    currentComponent: string = 'N/A'
 
     constructor(name: string) {
     
@@ -64,6 +63,8 @@ class Model {
                     this.fileChanged = true
             }
         })
+
+        // xxx watch for changes on variantsFn?
     }
 
     // make this model the active one
@@ -164,7 +165,7 @@ class Model {
         let initialVariant: string | null = null
         $('#variant-selector').empty()
         for (const variant in this.variants!) {
-            if (!initialVariant || variant == this.currentVariantName)
+            if (!initialVariant || variant == this.currentVariant)
                 initialVariant = variant
             $('<option>')
                 .attr('value', variant)
@@ -178,7 +179,7 @@ class Model {
         let initialComponent: string | null = null
         $('#component-selector').empty()
         for (const component in this.components!) {
-            if (!initialComponent || component == this.currentComponentName)
+            if (!initialComponent || component == this.currentComponent)
                 initialComponent = component
             $('<option>')
                 .attr('value', component)
@@ -202,18 +203,17 @@ class Model {
             $('#component-selector').val(initialComponent).trigger('change');
     }
 
-    setVariant(variantName: string) {
-        log('setVariant', this.name, variantName)
-        this.currentVariantName = variantName
-        this.settings.setVariant(this.variants[variantName])
+    setVariant(name: string) {
+        log('setVariant', this.name, name)
+        this.currentVariant = name
+        this.settings.setVariant(this.variants[name])
         this.construct()
     }
 
-    setComponent(componentName: string) {
-        log('setComponent', this.name, componentName)
-        this.currentComponent = this.components![componentName]
-        this.currentComponentName = componentName
-        Model.viewer.setCsg(this.currentComponent.rotateX(90))
+    setComponent(name: string) {
+        log('setComponent', this.name, name)
+        this.currentComponent = name
+        Model.viewer.setCsg(this.components![name].rotateX(90))
     }
 }
 
