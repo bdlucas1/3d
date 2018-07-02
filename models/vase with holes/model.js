@@ -1,4 +1,4 @@
-const detail = ui.slider({name: 'detail', min: 12, max: 50, value: 40})
+const detail = ui.slider({name: 'detail', min: 12, max: 50, value: 20})
 const thickness = ui.slider({name: 'thickness', min: 0.01, max: 0.1, step: 0.005, value: 0.02})
 
 const nh = ui.slider({name: 'n horizontal', min: 1, max: 20, value: 7})
@@ -6,7 +6,7 @@ const nv = ui.slider({name: 'n vertical', min: 1, max: 20, value: 9})
 const hskew = ui.slider({name: 'h skew', min: -0.5, max: 0.5, step: 0.01, value: 0.1})
 const vmin = ui.slider({name: 'v min', min: -1.0, max: 1.0, step: 0.01, value: -0.65})
 const vmax = ui.slider({name: 'v max', min: -1.0, max: 1.0, step: 0.01, value: 0.55})
-const diameter = ui.slider({name: 'diameter', min: 0, max: 0.5, step: 0.01, value: 0.2})
+const diameter = ui.slider({name: 'hole diameter', min: 0, max: 0.5, step: 0.01, value: 0.2})
 
 const radius = (s) => lib.wave(0.0, 0.9, 0.25, .4)(s) - 0.1 * s
 let maxr = 0
