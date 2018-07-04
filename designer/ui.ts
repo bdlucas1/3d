@@ -425,6 +425,7 @@ export function curve(options: {
         Settings.current.settings[options.name] = setting
     }
     const scale = options.scale || 1
-    return (s: number) => (<Curve>setting).fun.bind()(s) * scale
+    const fun = (<Curve>setting).fun.bind()
+    return (s: number) => fun(s) * scale
 }
 
