@@ -292,8 +292,8 @@ class Curve implements Setting<Pt[]> {
 
     // curve widget dimensions
     // xxx use css?
-    static width = 250
-    static height = 100
+    static width = 200
+    static height = 80
     static padX = 6
     static padY = 10
     static factor = 2
