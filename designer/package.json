@@ -1,7 +1,7 @@
 {
-  "name": "3d-editor",
+  "name": "3d-designer",
   "version": "1.0.0",
-  "description": "Create and edit 3d models using CSG",
+  "description": "Design 3d models using CSG",
   "main": "main.js",
   "scripts": {
     "start": "tsc --target ES5 --strict *.ts && electron --js-flags='--expose-gc' ."

@@ -1,6 +1,6 @@
 import * as $ from 'jquery'
 import {remote} from 'electron'
-import * as editor from '../editor/editor'
+import * as designer from '../designer/designer'
 const numeric = require('numeric')
 
 const log = remote.getGlobal('console').log
@@ -97,7 +97,7 @@ class Slider implements Setting<number> {
         $(this.inputElt)
             .on('change', () => {
                 log('change', this.value)
-                editor.change()
+                designer.change()
             })
             .on('input', () => {
                 $(this.echoElt).text(this.inputElt.value)
@@ -353,7 +353,7 @@ class Curve implements Setting<Pt[]> {
                 this.kind = kindSelect.value
                 this.fun = Curve.kinds[this.kind](this.fun.pts)
                 this.draw(true)
-                editor.change()
+                designer.change()
             })
         [0]
         for (const kind in Curve.kinds)
@@ -391,7 +391,7 @@ class Curve implements Setting<Pt[]> {
                 $(window).unbind('mousemove', mousemove)
                 $(window).unbind('mouseup', mouseup)
                 this.draw(true)
-                editor.change()
+                designer.change()
             }
             $(this.elt).on('mouseup', mouseup)
             $(window).on('mouseup', mouseup)

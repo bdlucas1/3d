@@ -11,7 +11,7 @@ app.on('ready', () => {
         //show: false
     })
 
-    win.loadFile('editor.html')
+    win.loadFile('designer.html')
 
     win.on('closed', function () {
         win = null
