@@ -73,6 +73,10 @@ body {
     margin-right: 0.8em;
 }
 
+.ui-setting canvas {
+    margin-bottom: -8px; /* xxx where does the extra space come from? */
+}
+
 canvas {
     user-select: none;
 }
