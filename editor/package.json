@@ -19,6 +19,7 @@
     "@types/command-line-args": "^5.0.0",
     "@types/jquery": "^3.3.4",
     "command-line-args": "^5.0.2",
-    "jquery": "^3.3.1"
+    "jquery": "^3.3.1",
+    "numeric": "^1.2.6"
   }
 }

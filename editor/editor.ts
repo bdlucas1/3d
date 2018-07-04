@@ -130,9 +130,10 @@ class Model {
                 this.variants['default'] = this.settings.defaultVariant
 
                 // message number of polys in each compoment, and construction time
-                this.stats = Object.keys(this.components!).map(
-                    (name) => name + ': ' + this.components![name].polygons.length
-                ).join(', ')
+                this.stats = Object.keys(this.components!).map((name) => {
+                    const polys = this.components![name].polygons
+                    return name + ': ' + (polys? polys.length : 'none')
+                }).join(', ')
                 message(this.stats + ';    ' + (now() - start) + 'ms')
 
                 // show our components, variants, ui, and model
