@@ -367,6 +367,7 @@ function curve(options) {
         Settings.current.settings[options.name] = setting;
     }
     var scale = options.scale || 1;
-    return function (s) { return setting.fun.bind()(s) * scale; };
+    var fun = setting.fun.bind();
+    return function (s) { return fun(s) * scale; };
 }
 exports.curve = curve;
