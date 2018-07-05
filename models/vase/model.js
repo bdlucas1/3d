@@ -8,12 +8,12 @@ profile = ui.curve({name: 'profile', kind: 'hybrid', value: pts, scale: diameter
 
 ui.view({distance: 10, height: 2.5})
 
+
 vase = lib.vase({
     slices: detail,
     wedges: detail,
     thickness: () => thickness,
     radius: profile,
-    base: thickness
 })
 
 return {vase, outer: vase.outer, inner: vase.inner}

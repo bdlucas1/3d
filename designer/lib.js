@@ -133,15 +133,17 @@ function vase(options) {
 
     options = options || {};
     var radius = options.radius || (() => 1);
-    var thickness = options.thickness || (() => 0.1)
+    var thickness = options.thickness || (() => 0.1) // relative to diameter
     var path = options.path || line(vec3(0, -1, 0), vec3(0, 1, 0))
-    var base = options.base==undefined? 0.1 : options.base
+    var base = options.base==undefined? 1 : options.base // relative to thickness at base
 
     var outer = rod(override(options, {
         path: path
     }))
 
-    const ss = (s) => base + (1-base) * s
+    var height = path(1).y - path(0).y
+    var b = thickness(0) * diameter / height
+    const ss = (s) => b + (1-b) * s
     var inner = rod(override(options, {
         path: (s) => path(ss(s)),
         radius: (s, a) => radius(ss(s), a) - thickness(ss(s))

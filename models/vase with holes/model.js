@@ -46,7 +46,6 @@ vase = lib.vase({
     wedges: detail,
     thickness: () => thickness,
     radius: profile,
-    base: thickness
 })
 
 vase_with_holes = vase.subtract(punch)

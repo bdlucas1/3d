@@ -13,16 +13,17 @@ lobeVerProfile = ui.curve({name: 'lobe v profile', kind: '1 wave', value: [{x:0,
 
 twist = ui.slider({name: 'twist', min: -2, max: 2, step: 0.01, value: -0.5})
 
-ui.view({distance: 10, height: 2.5})
+height = 2 // using default path for lib.vase
+ui.view({distance: 10, height: height * 1.25})
 
 vase = lib.vase({
     slices: detail,
     wedges: Math.max(Math.ceil(detail / nLobes) * nLobes, Math.ceil(Math.sqrt(detail)) * nLobes),
     thickness: () => thickness,
     radius: (s, a) => profile(s) + lobeHorProfile(a * nLobes % 1) * lobeVerProfile(s) * lobeHeight,
-    base: thickness,
     twist
 })
+
 
 return {vase, outer: vase.outer, inner: vase.inner}
 
