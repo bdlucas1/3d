@@ -43,46 +43,44 @@ function rod(options) {
 
     var polygons = [];
 
-    function point(p, r, w) {
-        var angle = w * Math.PI * 2;
-        var out = axisX.times(Math.cos(angle)).plus(axisY.times(Math.sin(angle)));
-        var pos = p.plus(out.times(r));
-        return vtx(pos);
-    }
-
     for (var is = 0; is < slices; is++) {
 
         var p0 = path(is / slices)
         var p1 = path((is+1) / slices)
-
-        var r0 = radius(is / slices)
-        var r1 = radius((is+1) / slices)
 
         var axisZ = p1.minus(p0).unit()
         var isY = Math.abs(axisZ.y) > 0.5? 1 : 0;
         var axisX = vec3(isY, 1-isY, 0).cross(axisZ).unit();
         var axisY = axisX.cross(axisZ).unit();
         
-        var v0 = vtx(p0);
-        var v1 = vtx(p1);
-        
         for (var iw = 0; iw < wedges; iw++) {
 
             var w0 = iw / wedges
             var w1 = (iw + 1) / wedges;
 
-            if (is == 0 && r0 != 0)
-                polygons.push(poly([v0, point(p0, r0, w0), point(p0, r0, w1)]));
-            if (r0==0)
-                polygons.push(poly([point(p0, r0, w1), point(p1, r1, w0), point(p1, r1, w1)]));
-            else if (r1==0)
-                polygons.push(poly([point(p0, r0, w1), point(p0, r0, w0), point(p1, r1, w0)]));
-            else
-                polygons.push(poly([point(p0, r0, w1), point(p0, r0, w0), point(p1, r1, w0), point(p1, r1, w1)]));            
-            if (is == slices-1 && r1 != 0)
-                polygons.push(poly([v1, point(p1, r1, w1), point(p1, r1, w0)]));
+            var r00 = radius(is / slices, w0)
+            var r10 = radius((is+1) / slices, w0)
+            var r01 = radius(is / slices, w1)
+            var r11 = radius((is+1) / slices, w1)
+
+            function point(p, r, w) {
+                var angle = w * Math.PI * 2;
+                var out = axisX.times(Math.cos(angle)).plus(axisY.times(Math.sin(angle)));
+                var pos = p.plus(out.times(r));
+                return vtx(pos);
+            }
+
+            if (is == 0 && r00 != 0 && r01 !=0)
+                polygons.push(poly([vtx(p0), point(p0, r00, w0), point(p0, r01, w1)]));
+            if (r01 != 0 || r00 != 0)
+                polygons.push(poly([point(p0, r01, w1), point(p0, r00, w0), point(p1, r11, w1)]));            
+            if (r10 != 0 || r11 != 0)
+                polygons.push(poly([point(p0, r00, w0), point(p1, r10, w0), point(p1, r11, w1)]));
+            if (is == slices-1 && r11 != 0 && r10 !=0)
+                polygons.push(poly([vtx(p1), point(p1, r11, w1), point(p1, r10, w0)]));
         }
     }
+    log('xxx rod')
     return CSG.fromPolygons(polygons);
 };
 exports.rod = rod
@@ -132,7 +130,7 @@ function vase(options) {
     const ss = (s) => base + (1-base) * s
     var inner = rod(override(options, {
         path: (s) => path(ss(s)),
-        radius: (s) => radius(ss(s)) - thickness(ss(s))
+        radius: (s, a) => radius(ss(s), a) - thickness(ss(s))
     }))
 
     const vase = outer.subtract(inner)
