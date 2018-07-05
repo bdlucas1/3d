@@ -235,6 +235,9 @@ $(window).on('load', () => {
     const options = commandLineArgs(optionDefinitions, {argv: argv.slice(1)})
     log(options)
 
+    // for non-simple fullscreen mode seem to have to wait until about here to enable it
+    //remote.getCurrentWindow().setFullScreen(true)
+
     // read model directory, populate menu
     log('reading models')
     let newestMtime = 0

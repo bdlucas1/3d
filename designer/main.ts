@@ -8,6 +8,8 @@ app.on('ready', () => {
     win = new BrowserWindow({
         width: 1024,
         height: 640,
+        fullscreen: true,
+        simpleFullscreen: true,
         //show: false
     })
 
