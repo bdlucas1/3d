@@ -10,7 +10,7 @@ export type ViewOptions = {
     height: number
 }
 
-export type Variant = {[name: string]: number}
+export type Variant = {[name: string]: number | boolean}
 
 interface Setting<T> {
     value: T
@@ -132,6 +132,68 @@ export function slider(options: SliderOptions) {
     }
     log('value', options.name, setting.value)
     return parseFloat(setting.value)
+}
+
+//
+// checkbox
+//
+
+type CheckboxOptions = {
+    name: string,
+    value: boolean,
+}
+
+class Checkbox implements Setting<boolean> {
+
+    elt: HTMLElement
+    inputElt: HTMLInputElement
+
+    constructor(options: CheckboxOptions) {
+
+        this.elt = $('<span>').addClass('ui-checkbox')[0]
+        this.inputElt = <HTMLInputElement>$('<input>').appendTo(this.elt)[0]
+
+        $(this.inputElt)
+            .attr('type', 'checkbox')
+        this.inputElt.checked = options.value
+    }
+
+    activate() {
+        $(this.inputElt)
+            .on('change', () => {
+                log('change', this.value)
+                designer.change()
+            })
+    }
+
+    get value(): boolean {
+        return this.inputElt.checked
+    }
+
+    set value(value: boolean) {
+        this.inputElt.checked = value
+    }
+}
+
+export function checkbox(options: CheckboxOptions) {
+
+    if (!Settings.current)
+        return
+
+    // remember default settings
+    Settings.current.defaultVariant[options.name] = options.value
+
+    // create Checkbox
+    let setting = Settings.current.settings[options.name]
+    if (!setting) {
+        log('new checkbox', options.value)
+        setting = new Checkbox(options)
+
+        //.attr('id', 'checkbox-' + name
+        Settings.current.settings[options.name] = setting
+    }
+    log('value', options.name, setting.value)
+    return setting.value
 }
 
 //
