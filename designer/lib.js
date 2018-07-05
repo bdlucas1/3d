@@ -40,6 +40,7 @@ function rod(options) {
     var slices = Math.floor(options.slices) || 16;
     var path = options.path || line(vec3(0, -0.5, 0), vec3(0, 0.5, 0))
     var radius = options.radius || (() => 0.5);
+    var twist = options.twist || 0
 
     var polygons = [];
 
@@ -55,32 +56,45 @@ function rod(options) {
         
         for (var iw = 0; iw < wedges; iw++) {
 
-            var w0 = iw / wedges
-            var w1 = (iw + 1) / wedges;
+            var w0 = (iw / wedges)
+            var w1 = ((iw+1) / wedges)
+
+            var w00 = (is / slices) * twist + w0
+            var w01 = (is / slices) * twist + w1
+            var w10 = ((is+1) / slices) * twist + w0
+            var w11 = ((is+1) / slices) * twist + w1
 
             var r00 = radius(is / slices, w0)
-            var r10 = radius((is+1) / slices, w0)
             var r01 = radius(is / slices, w1)
+            var r10 = radius((is+1) / slices, w0)
             var r11 = radius((is+1) / slices, w1)
 
             function point(p, r, w) {
                 var angle = w * Math.PI * 2;
                 var out = axisX.times(Math.cos(angle)).plus(axisY.times(Math.sin(angle)));
                 var pos = p.plus(out.times(r));
-                return vtx(pos);
+                return vtx(pos/*, out.unit()*/);
             }
 
-            if (is == 0 && r00 != 0 && r01 !=0)
-                polygons.push(poly([vtx(p0), point(p0, r00, w0), point(p0, r01, w1)]));
-            if (r01 != 0 || r00 != 0)
-                polygons.push(poly([point(p0, r01, w1), point(p0, r00, w0), point(p1, r11, w1)]));            
-            if (r10 != 0 || r11 != 0)
-                polygons.push(poly([point(p0, r00, w0), point(p1, r10, w0), point(p1, r11, w1)]));
-            if (is == slices-1 && r11 != 0 && r10 !=0)
-                polygons.push(poly([vtx(p1), point(p1, r11, w1), point(p1, r10, w0)]));
+            //  p00 p01
+            //  p10 p11
+
+            var p00 = point(p0, r00, w00)
+            var p01 = point(p0, r01, w01)
+            var p10 = point(p1, r10, w10)
+            var p11 = point(p1, r11, w11)
+
+            if (is == 0 && r00 != 0 && r01 !=0) polygons.push(poly([vtx(p0), p00, p01]));
+            if (twist < 0) {
+                if (r10 != 0 || r11 != 0)       polygons.push(poly([p00, p10, p11]));
+                if (r01 != 0 || r00 != 0)       polygons.push(poly([p11, p01, p00]));
+            } else {
+                if (r00 != 0 || r01 != 0)       polygons.push(poly([p01, p00, p10]));
+                if (r11 != 0 || r10 != 0)       polygons.push(poly([p10, p11, p01]));
+            }
+            if (is == slices-1 && r11 != 0 && r10 !=0) polygons.push(poly([vtx(p1), p11, p10]));
         }
     }
-    log('xxx rod')
     return CSG.fromPolygons(polygons);
 };
 exports.rod = rod
