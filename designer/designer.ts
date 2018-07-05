@@ -236,7 +236,7 @@ $(window).on('load', () => {
     log(options)
 
     // for non-simple fullscreen mode seem to have to wait until about here to enable it
-    //remote.getCurrentWindow().setFullScreen(true)
+    remote.getCurrentWindow().setFullScreen(true)
 
     // read model directory, populate menu
     log('reading models')
