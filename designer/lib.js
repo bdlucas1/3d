@@ -142,11 +142,11 @@ function vase(options) {
     }))
 
     var height = path(1).y - path(0).y
-    var b = thickness(0) * diameter / height
+    var b = thickness(0, 0) * diameter / height // xxx min thickness over all a
     const ss = (s) => b + (1-b) * s
     var inner = rod(override(options, {
         path: (s) => path(ss(s)),
-        radius: (s, a) => radius(ss(s), a) - thickness(ss(s))
+        radius: (s, a) => radius(ss(s), a) - thickness(ss(s), a)
     }))
 
     const vase = outer.subtract(inner)
