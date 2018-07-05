@@ -225,7 +225,8 @@ $(window).on('load', () => {
     // select model
     log('argv', remote.process.argv)
     const optionDefinitions = [
-        {name: 'model', alias: 'm', type: String}
+        {name: 'model', alias: 'm', type: String},
+        {name: 'dbg', type: Boolean}
     ]
     // ignore electron flags
     let argv = remote.process.argv.slice(1)
@@ -263,7 +264,8 @@ $(window).on('load', () => {
             draw: false,
         },
         solid: {
-            lines: true,
+            lines: options.dbg,
+            outlineColor: {r: 1.0, g: 0.0, b: 0.0, a: 1},
             overlay: false,
             smooth: false, // smooth lighting
             faceColor: {r: 1.0, g: 1.0, b: 1.0, a: 1.0}
