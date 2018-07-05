@@ -19,6 +19,13 @@ body {
 #controls {
     height: 3em;
     width: 100%;
+    padding-top: 1em;
+}
+
+#controls * {
+    height: 1.5em;
+    width: 1.5em;
+    padding-right: 0.75em;
 }
 
 #viewer-ui {

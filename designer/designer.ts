@@ -10,6 +10,7 @@ const log = remote.getGlobal('console').log
 
 const CSG = require('@jscad/CSG').CSG
 const Viewer = require('@jscad/openjscad/src/ui/viewer/jscad-viewer')
+const io = require('@jscad/io')
 
 function now() {
     return new Date().getTime()
@@ -21,9 +22,11 @@ function message(msg: string) {
 
 class Model {
 
+    static dn = '../models'
     static current: Model | null = null
     static models: {[name: string]: Model} = {}
     static viewer: any
+    static csg: any
 
     name: string = 'N/A'
     stats: string = "N/A"
@@ -43,8 +46,8 @@ class Model {
     
         log('adding model', name)
         this.name = name
-        this.modelFn = path.join('../models', name, 'model.js')
-        this.variantsFn = path.join('../models', name, 'variants.json')
+        this.modelFn = path.join(Model.dn, name, 'model.js')
+        this.variantsFn = path.join(Model.dn, name, 'variants.json')
 
         Model.models[name] = this
 
@@ -91,6 +94,7 @@ class Model {
                 this.code = newValue
                 $('#component-selector').empty()
                 this.settings.clear()
+                this.currentVariant = 'default'
                 this.construct()
             }
 
@@ -203,14 +207,15 @@ class Model {
     setVariant(name: string) {
         log('setVariant', this.name, name)
         this.currentVariant = name
-        this.settings.setVariant(this.variants[name])
+        this.settings.loadVariant(this.variants[name])
         this.construct()
     }
 
     setComponent(name: string) {
         log('setComponent', this.name, name)
         this.currentComponent = name
-        Model.viewer.setCsg(this.components![name].rotateX(90))
+        Model.csg = this.components![name]
+        Model.viewer.setCsg(Model.csg.rotateX(90))
     }
 }
 
@@ -219,6 +224,49 @@ export function change() {
     if (Model.current)
         Model.current.construct()
 }
+
+function controls() {
+
+    function context() {
+        const canvas = <HTMLCanvasElement>$('<canvas>').attr('width', 100).attr('height', 100).appendTo('#controls')[0]
+        const ctx = canvas.getContext('2d')!
+        ctx.strokeStyle = 'rgb(150,150,150)'
+        ctx.lineWidth = 8
+        return {canvas, ctx}
+    }
+
+    function save() {
+        const {canvas, ctx} = context()
+        ctx.moveTo(50, 0)
+        ctx.lineTo(50, 100)
+        ctx.moveTo(25, 60)
+        ctx.lineTo(50, 100)
+        ctx.lineTo(75, 60)
+        ctx.stroke()
+        $(canvas).on('click', () => {
+            const stl = io.stlSerializer.serialize(Model.csg, {binary: false})
+            const m = Model.current!
+            const fn = path.join(Model.dn, m.name, [m.currentVariant, m.currentComponent].join(' - ') + '.stl')
+            log('writing', fn)
+            fs.writeFileSync(fn, stl[0].toString())
+        })
+    }
+
+    function restore() {
+        const {canvas, ctx} = context()        
+        const circle = 2 * Math.PI
+        ctx.arc(50, 51, 42, -0.25 * circle, 0.6 * circle)
+        ctx.moveTo(50, 40)
+        ctx.lineTo(50, 5)
+        ctx.lineTo(90, 5)
+        ctx.stroke()
+    }
+
+
+    save()
+    restore()
+}
+
 
 $(window).on('load', () => {
 
@@ -238,18 +286,20 @@ $(window).on('load', () => {
     // for non-simple fullscreen mode seem to have to wait until about here to enable it
     remote.getCurrentWindow().setFullScreen(true)
 
+    // add controls
+    controls()
+
     // read model directory, populate menu
     log('reading models')
     let newestMtime = 0
     let newestModel: string
-    const dn = '../models'
-    fs.readdirSync(dn).forEach(fn => {
+    fs.readdirSync(Model.dn).forEach(fn => {
         $('<option>')
             .attr('value', fn)
             .text(fn)
             .appendTo('#model-selector')
         new Model(fn)
-        const mtime = fs.statSync(path.join(dn, fn)).mtimeMs
+        const mtime = fs.statSync(path.join(Model.dn, fn)).mtimeMs
         if (mtime > newestMtime) {
             newestMtime = mtime
             newestModel = fn

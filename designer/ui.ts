@@ -51,7 +51,7 @@ export class Settings {
         this.defaultVariant = {}
     }
 
-    setVariant(variant: Variant) {
+    loadVariant(variant: Variant) {
         for (const name in variant)
             this.settings[name].value = variant[name].toString()
     }
