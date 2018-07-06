@@ -222,6 +222,16 @@ abstract class Fun {
         for (let i = 0; i < this.pts.length; i++)
             this.pts[i].y /= max
     }
+
+    add(p: Pt) {
+        this.pts.push(p)
+        this.pts.sort((p, q) => p.x - q.x)
+        log('pts', this.pts)
+    }
+
+    remove(i: number) {
+        this.pts.splice(i, 1)
+    }
 }
 
 abstract class Parametric extends Fun {
@@ -242,6 +252,16 @@ abstract class Parametric extends Fun {
         this.parms = soln.solution
         log('soln', soln.iterations, soln.f, this.parms.join(','))
         return (x: number) => this.fun(x, this.parms)
+    }
+
+    add(p: Pt) {
+        super.add(p)
+        this.parms.push(0)
+    }
+
+    remove(i: number) {
+        super.remove(i)
+        this.parms.pop()
     }
 }
 
@@ -361,15 +381,39 @@ class Curve implements Setting<Pt[]> {
     static factor = 2
     static radius = 5
 
-    // curve coordinates to drawing coordinates
+    // curve coordinates to screen
     // divide by Curve.factor to get mouse coordinates
-    static D = (x: number, y: number) => {
-        x = (x * (Curve.width - 2*Curve.padX) + Curve.padX) * Curve.factor
-        y = ((1-y) * (Curve.height - 2*Curve.padY) + Curve.padY) * Curve.factor
+    static toScreen = (x: number, y: number) => { return {
+        x: (x * (Curve.width - 2*Curve.padX) + Curve.padX) * Curve.factor,
+        y: ((1-y) * (Curve.height - 2*Curve.padY) + Curve.padY) * Curve.factor
+    }}
+
+    // mouse coordinates to curve coordinates
+    fromMouse(e: any) {
+        const rect = this.elt.getBoundingClientRect();
+        let x = e.clientX! - rect.left, y = e.clientY - rect.top
+        x = (x - Curve.padX) / (Curve.width - 2 * Curve.padX)
+        y = 1 - (y - Curve.padY) / (Curve.height - 2 * Curve.padY)
         return {x, y}
     }
 
+    // which control point event is targeted at
+    hit(e: any) {
+        const rect = e.target.getBoundingClientRect()
+        let x = e.clientX! - rect.left, y = e.clientY! - rect.top
+        for (let i = 0; i < this.value.length; i++) {
+            const s = Curve.toScreen(this.value[i].x, this.value[i].y)
+            if ((x - s.x/Curve.factor)**2 + (y - s.y/Curve.factor)**2 < Curve.radius**2)
+                return i
+        }
+        return -1
+    }
+
     draw(final: boolean) {
+
+        const lineTo = (x: number, y: number) => {const s = Curve.toScreen(x, y); ctx.lineTo(s.x, s.y)}
+        const moveTo = (x: number, y: number) => {const s = Curve.toScreen(x, y); ctx.moveTo(s.x, s.y)}
+        const arc = (x: number, y: number, r: number, a: number, b: number) => {const s = Curve.toScreen(x, y); ctx.arc(s.x, s.y, r, a, b)}
 
         // reset canvas state
         this.elt.width = this.elt.width
@@ -381,19 +425,19 @@ class Curve implements Setting<Pt[]> {
 
         // draw the curve
         const ctx = this.elt.getContext("2d")!
-        let d: {x: number, y: number}
+        let s: {x: number, y: number}
         ctx.strokeStyle = 'rgb(0,0,0)'
         ctx.fillStyle = final? 'rgb(250,250,250)' : 'rgb(245,245,245)'
         ctx.lineWidth = Curve.factor * 1
         ctx.beginPath()
         const n = 100
-        d = Curve.D(0, 0); ctx.moveTo(d.x, d.y)
+        moveTo(0, 0)
         for (let i = 0; i <= n; i++) {
             const x = i / n
-            d = Curve.D(x, curve(x)); ctx.lineTo(d.x, d.y)
+            lineTo(x, curve(x))
         }
-        d = Curve.D(1, 0); ctx.lineTo(d.x, d.y)
-        d = Curve.D(0, 0); ctx.lineTo(d.x, d.y)
+        lineTo(1, 0)
+        lineTo(0, 0)
         ctx.stroke()
         ctx.fill()
 
@@ -402,7 +446,7 @@ class Curve implements Setting<Pt[]> {
             ctx.strokeStyle = 'rgb(255,0,0)'
             ctx.lineWidth = Curve.factor * 1
             ctx.beginPath()
-            d = Curve.D(p.x, p.y); ctx.arc(d.x, d.y, Curve.radius * Curve.factor, 0, 2*Math.PI, true);
+            arc(p.x, p.y, Curve.radius * Curve.factor, 0, 2*Math.PI);
             ctx.stroke()
         }
     }
@@ -426,22 +470,14 @@ class Curve implements Setting<Pt[]> {
         $(this.elt).on('mousedown', (e) => {
 
             // which point are we moving (if any)?
-            let moving = -1
-            const rect = e.target.getBoundingClientRect()
-            let x = e.clientX! - rect.left, y = e.clientY! - rect.top
-            for (let i = 0; i < this.value.length; i++) {
-                const d = Curve.D(this.value[i].x, this.value[i].y)
-                if ((x - d.x/Curve.factor)**2 + (y - d.y/Curve.factor)**2 < Curve.radius**2)
-                    moving = i
-            }
+            let moving = this.hit(e)
             if (moving < 0)
                 return
 
             const mousemove = (e: any) => {
-                const rect = this.elt.getBoundingClientRect()
-                let x = e.clientX! - rect.left, y = e.clientY - rect.top
-                this.value[moving].x = Math.min(Math.max((x - Curve.padX) / (Curve.width - 2 * Curve.padX), 0), 1)
-                this.value[moving].y = Math.min(Math.max(1 - (y - Curve.padY) / (Curve.height - 2 * Curve.padY), 0), 1)
+                const {x, y} = this.fromMouse(e)
+                this.value[moving].x = Math.min(Math.max(x, 0), 1)
+                this.value[moving].y = Math.min(Math.max(y, 0), 1)
                 this.draw(false)
             }
             $(this.elt).on('mousemove', mousemove);
@@ -462,6 +498,17 @@ class Curve implements Setting<Pt[]> {
                 e.stopPropagation()
             }, {capture: true, once: true})
         })
+
+        $(this.elt).on('dblclick', (e) => {
+            const i = this.hit(e)
+            if (i < 0)
+                this.fun.add(this.fromMouse(e))
+            else
+                this.fun.remove(i)
+            this.draw(true)
+            designer.change()
+        })
+            
     }
 }
 
