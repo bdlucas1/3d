@@ -28,6 +28,10 @@ class Model {
     static viewer: any
     static csg: any
 
+    static live = true
+    static hasChanged = false
+    static eye: Eye
+
     name: string = 'N/A'
     stats: string = "N/A"
     settings = new ui.Settings()
@@ -114,8 +118,9 @@ class Model {
     // execute file, constructing model using csg
     construct() {
 
-        log('constructing')
-        message('constructing...')
+        log('scheduling construction')
+        message('constructing...');
+        Model.eye.working()
 
         const start = now()
 
@@ -125,10 +130,15 @@ class Model {
             try {
 
                 // execute the code
+                log('starting construction')
                 const libNames = ['ui', 'lib']
                 const loadedLibs = libNames.map((name) => require('./' + name + '.js'))
                 this.settings.activate() // assert already active?
                 this.components = new Function('log', 'CSG', ...libNames, this.code)(log, CSG, ...loadedLibs);
+
+                // reset hasChanged flag
+                Model.hasChanged = false
+                $('#changed').css('background', 'none')
 
                 // remember default settings
                 this.variants['default'] = this.settings.defaultVariant
@@ -139,19 +149,20 @@ class Model {
                     return name + ': ' + (polys? polys.length : 'none')
                 }).join(', ')
                 message(this.stats + ';    ' + (now() - start) + 'ms')
+                Model.eye.resting()
 
                 // show our components, variants, ui, and model
                 this.show()
 
                 // now's a good time to schedule a gc
-                setTimeout(() => (<any>global.gc)(true), 0)
+                //setTimeout(() => (<any>global.gc)(true), 0)
 
             } catch (e) {
                 log(e.stack)
                 message(e.toString())
             }
 
-        }, 0) // setTimeout
+        }, 100) // setTimeout
     }
 
     // show our components and ui
@@ -221,50 +232,145 @@ class Model {
 
 // ui calls this to indicate change in parameters
 export function change() {
-    if (Model.current)
-        Model.current.construct()
+    if (Model.current) {
+        if (Model.live) {
+            $('#changed').css('background', 'rgba(255,255,255,0.3)');
+            Model.current.construct()
+        } else {
+            $('#changed').css('background', 'rgba(255,255,255,0.7)');
+            Model.hasChanged = true;
+        }
+    }
 }
 
-function controls() {
+class Control {
 
-    function context() {
-        const canvas = <HTMLCanvasElement>$('<canvas>').attr('width', 100).attr('height', 100).appendTo('#controls')[0]
-        const ctx = canvas.getContext('2d')!
-        ctx.strokeStyle = 'rgb(150,150,150)'
-        ctx.lineWidth = 8
-        return {canvas, ctx}
+    canvas: HTMLCanvasElement
+    ctx: CanvasRenderingContext2D
+
+    constructor(title: string | null, width: number = 100) {
+        this.canvas = <HTMLCanvasElement>$('<canvas>').attr('width', width).attr('height', 100).appendTo('#controls')[0]
+        if (title)
+            $(this.canvas).attr('title', title)
+        this.ctx = this.canvas.getContext('2d')!
+        this.ctx.strokeStyle = 'rgb(150,150,150)'
+        this.ctx.lineWidth = 8
+        this.ctx.beginPath()
     }
+}
 
-    function save() {
-        const {canvas, ctx} = context()
-        ctx.moveTo(50, 0)
-        ctx.lineTo(50, 100)
-        ctx.moveTo(25, 60)
-        ctx.lineTo(50, 100)
-        ctx.lineTo(75, 60)
-        ctx.stroke()
-        $(canvas).on('click', () => {
-            const stl = io.stlSerializer.serialize(Model.csg, {binary: false})
+class ExportModels extends Control {
+    constructor() {
+        super('Export models')
+        const circle = 2 * Math.PI
+        this.ctx.moveTo(50, 100)
+        this.ctx.lineTo(50, 0)
+        this.ctx.moveTo(25, 40)
+        this.ctx.lineTo(50, 0)
+        this.ctx.lineTo(75, 40)
+        this.ctx.stroke()
+        $(this.canvas).on('click', () => {
             const m = Model.current!
-            const fn = path.join(Model.dn, m.name, [m.currentVariant, m.currentComponent].join(' - ') + '.stl')
-            log('writing', fn)
-            fs.writeFileSync(fn, stl[0].toString())
+            for (const name in m.components!) {
+                const fn = path.join(Model.dn, m.name, [m.currentVariant, name].join(' - ') + '.stl')
+                log('writing', fn)
+                const stl = io.stlSerializer.serialize(m.components![name], {binary: false})
+                fs.writeFileSync(fn, stl[0].toString())
+            }
         })
     }
+}
 
-    function restore() {
-        const {canvas, ctx} = context()        
+class ResetVariant extends Control {
+    constructor() {
+        super('Reset variant')
         const circle = 2 * Math.PI
-        ctx.arc(50, 51, 42, -0.25 * circle, 0.6 * circle)
-        ctx.moveTo(50, 40)
-        ctx.lineTo(50, 5)
-        ctx.lineTo(90, 5)
-        ctx.stroke()
+        this.ctx.arc(50, 51, 42, -0.25 * circle, 0.6 * circle)
+        this.ctx.moveTo(50, 40)
+        this.ctx.lineTo(50, 5)
+        this.ctx.lineTo(90, 5)
+        this.ctx.stroke()
+    }
+}
+
+class SaveVariant extends Control {
+    constructor() {
+        super('Save variant')
+        this.ctx.moveTo(50, 0)
+        this.ctx.lineTo(50, 100)
+        this.ctx.moveTo(25, 60)
+        this.ctx.lineTo(50, 100)
+        this.ctx.lineTo(75, 60)
+        this.ctx.stroke()
+    }
+}
+
+class Eye extends Control {
+
+    static width = 125
+    static a = 0.20
+
+    constructor() {
+        super('Show model', Eye.width)
+        $(this.canvas).attr('id', 'eye')
+        this.resting()
+        $(this.canvas).on('click', (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            if (Model.hasChanged) {
+                Model.current!.construct()
+            } else {
+                Model.live = !Model.live
+                this.resting()
+            }
+        })
+    }        
+
+    working() {
+        this.draw('working')
     }
 
+    resting() {
+        this.draw(Model.live? 'open' : 'closed')
+    }
 
-    save()
-    restore()
+    draw(state: 'open' | 'closed' | 'working') {
+
+        const width = Eye.width
+        const circle = 2 * Math.PI
+        const a = Eye.a * circle
+        const x = Eye.width / 2 - 5
+        const r = x / Math.sin(a)
+        const y = r * Math.cos(a)
+
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.ctx.lineCap = 'round'
+
+        this.ctx.beginPath()
+        this.ctx.arc(width/2, 50 + y, r, 0.75*circle - a, 0.75*circle + a)
+        this.ctx.stroke()
+
+        this.ctx.beginPath()
+        this.ctx.arc(width/2, 50 - y, r, 0.25*circle - a, 0.25*circle + a)
+        this.ctx.stroke()
+    
+        if (state=='closed') {
+            this.ctx.beginPath()
+            this.ctx.moveTo(width/2 - x, 50)
+            this.ctx.lineTo(width/2 + x, 50)
+            this.ctx.stroke()
+        } else {
+            this.ctx.beginPath()
+            this.ctx.save()
+            if (state=='working')
+                this.ctx.strokeStyle = 'rgb(255,0,0)'
+            this.ctx.arc(width/2, 50, width/5, 0, circle)
+            this.ctx.stroke()
+            this.ctx.restore()
+        }
+
+    }
 }
 
 
@@ -287,7 +393,10 @@ $(window).on('load', () => {
     remote.getCurrentWindow().setFullScreen(true)
 
     // add controls
-    controls()
+    new ExportModels()
+    new ResetVariant()
+    new SaveVariant()
+    Model.eye = new Eye()
 
     // read model directory, populate menu
     log('reading models')
@@ -329,6 +438,9 @@ $(window).on('load', () => {
             }
         */
     })
+
+    // canvas to show if model has changed
+    $('<canvas>').attr('id', 'changed').appendTo('#viewer')
 
     // respond to model selector changes
     $('#model-selector').on('change', () => {
