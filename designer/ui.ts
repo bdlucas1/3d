@@ -397,10 +397,8 @@ class Curve implements Control<CurveValue> {
     static kinds: {[name: string]: (pts: Pt[]) => Fun} = {
         'cubic': (pts: Pt[]) => new Spline(pts, 'cubic'),
         'akima': (pts: Pt[]) => new Spline(pts, 'akima'),
+        'cat-rom': (pts: Pt[]) => new CatRom(pts, 0.5),
         'linear': (pts: Pt[]) => new Spline(pts, 'linear'),
-        'cat-rom 0': (pts: Pt[]) => new CatRom(pts, 0.0),
-        'cat-rom .5': (pts: Pt[]) => new CatRom(pts, 0.5),
-        'cat-rom 1': (pts: Pt[]) => new CatRom(pts, 1.0),
         'poly': (pts: Pt[]) => new Polynomial(pts),
         '¼ wave': (pts: Pt[]) => new Fourier(pts, 4),
         '½ wave': (pts: Pt[]) => new Fourier(pts, 2),
