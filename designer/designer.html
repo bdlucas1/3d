@@ -8,17 +8,23 @@
   </head>
   <body id='top'>
     <div id='viewer-ui'>
-      <div>
-        <div id='controls'></div>
+      <div id="ui">
         <div id='selectors'>
-          <select id='model-selector' multiple></select>
-          <select id='variant-selector' multiple></select>
-          <select id='component-selector' multiple></select>
+          <div>
+            <div id='model-controls' class='controls'></div>
+            <select id='model-selector' multiple></select>
+          </div>
+          <div>
+            <div id='variant-controls' class='controls'></div>
+            <select id='variant-selector' multiple></select>
+          </div>
+          <div>
+            <div id='component-controls' class='controls'></div>
+            <select id='component-selector' multiple></select>
+          </div>
         </div>
-        <div id="ui">
-          <table id="ui-table"></table>
-          <!--<div id="locker"></div>-->
-        </div>
+        <table id="ui-table"></table>
+        <!--<div id="locker"></div>-->
       </div>
       <div id="viewer"></div>
     </div>

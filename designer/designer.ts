@@ -304,8 +304,8 @@ class Control {
     canvas: HTMLCanvasElement
     ctx: CanvasRenderingContext2D
 
-    constructor(title: string | null, width: number = 100) {
-        this.canvas = <HTMLCanvasElement>$('<canvas>').attr('width', width).attr('height', 100).appendTo('#controls')[0]
+    constructor(section: string, title: string | null, width: number = 100) {
+        this.canvas = <HTMLCanvasElement>$('<canvas>').attr('width', width).attr('height', 100).appendTo(section)[0]
         if (title)
             $(this.canvas).attr('title', title)
         this.ctx = this.canvas.getContext('2d')!
@@ -319,7 +319,7 @@ class Control {
 
 class ExportModels extends Control {
     constructor() {
-        super('Export models')
+        super('#model-controls', 'Export models')
         const circle = 2 * Math.PI
         this.ctx.moveTo(50, 100)
         this.ctx.lineTo(50, 0)
@@ -339,10 +339,14 @@ class ExportModels extends Control {
     }
 }
 
-class ResetVariant extends Control {
-    constructor() {
-        super('Reset variant')
+class UndoRedoVariant extends Control {
+    constructor(undo: boolean) {
+        super('#variant-controls', (undo? 'Undo' : 'Redo') + ' variant changes')
         const circle = 2 * Math.PI
+        if (!undo) {
+            this.ctx.translate(100, 0)
+            this.ctx.scale(-1, 1)
+        }
         this.ctx.arc(50, 51, 42, -0.25 * circle, 0.6 * circle)
         this.ctx.moveTo(50, 40)
         this.ctx.lineTo(50, 5)
@@ -351,9 +355,21 @@ class ResetVariant extends Control {
     }
 }
 
+class DeleteVariant extends Control {
+    constructor() {
+        super('#variant-controls', 'Delete variant')
+        const p = 10
+        this.ctx.moveTo(p, p)
+        this.ctx.lineTo(100 - p, 100 - p)
+        this.ctx.moveTo(p, 100 - p)
+        this.ctx.lineTo(100 - p, p)
+        this.ctx.stroke()
+    }
+}
+
 class SaveVariant extends Control {
     constructor() {
-        super('Save variant')
+        super('#variant-controls', 'Save variant')
         this.ctx.moveTo(50, 0)
         this.ctx.lineTo(50, 100)
         this.ctx.moveTo(25, 60)
@@ -366,7 +382,7 @@ class SaveVariant extends Control {
 class Lock extends Control {
 
     constructor() {
-        super('Lock/unlock variant')
+        super('#variant-controls', 'Lock/unlock variant')
         $(this.canvas).on('click', (e) => {
             const model = Model.current!
             // default is special - it can't be changed
@@ -423,7 +439,7 @@ class Eye extends Control {
     static a = 0.20
 
     constructor() {
-        super('Show model', Eye.width)
+        super('#component-controls', 'Show model', Eye.width)
         $(this.canvas).attr('id', 'eye')
         this.resting()
         $(this.canvas).on('click', (e) => {
@@ -504,9 +520,11 @@ $(window).on('load', () => {
 
     // add controls
     new ExportModels()
-    new ResetVariant()
     //new SaveVariant()
     Model.lock = new Lock()
+    new UndoRedoVariant(true)
+    new UndoRedoVariant(false)
+    new DeleteVariant()
     Model.eye = new Eye()
 
     // read model directory, populate menu

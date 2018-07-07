@@ -22,21 +22,24 @@ body {
     flex-direction: column;
 }
 
-#controls {
-    height: 3em;
+.controls {
+    height: 2.7em;
     width: 100%;
-    padding-top: 1em;
+    padding-top: 1.3em;
     display: flex;
     flex-direction: row;
 }
 
-#controls * {
+.controls * {
     height: 1.5em;
-    padding-right: 0.75em;
+    padding-right: 0.66em;
+}
+
+.controls *:last-child {
+    padding-right: 0;
 }
 
 #eye {
-    padding-right: 0;
     margin-left: auto;
 }
 
@@ -54,14 +57,17 @@ body {
     margin-bottom: 2em;
 }
 
-#selectors select {
-    outline: none;
-    width: 8em;
+#selectors > * {
     margin-left: 1em;
 }
 
-#selectors select:first-child {
+#selectors > *:first-child {
     margin-left: 0;
+}
+
+#selectors select {
+    width: 8em;
+    outline: none;
 }
 
 #ui {
