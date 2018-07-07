@@ -12,57 +12,57 @@ export type ViewOptions = {
     height: number
 }
 
-export type Variant = {[name: string]: number | boolean}
+export type Values = {[name: string]: number | boolean | CurveValue}
 
-interface Setting<T> {
+interface Control<T> {
     value: T
     elt: HTMLElement
     activate(): void
 }
 
-export class Settings {
+export class Controls {
 
-    static current: Settings | null = null
+    static current: Controls | null = null
 
     static defaultViewOptions = {
         distance: 5,
         height: 2
     }
     
-    viewOptions = Settings.defaultViewOptions
+    viewOptions = Controls.defaultViewOptions
 
-    defaultVariant: Variant = {}
-    settings: {[name: string]: Setting<any>} = {}
+    defaultValues: Values = {}
+    controls: {[name: string]: Control<any>} = {}
 
     activate() {
 
-        Settings.current = this
+        Controls.current = this
 
-        $('#ui').empty()
-        for (const name in this.settings) {
-            const setting = this.settings[name]
-            const tr = $('<tr>').appendTo('#ui')
+        $('#ui-table').empty()
+        for (const name in this.controls) {
+            const control = this.controls[name]
+            const tr = $('<tr>').appendTo('#ui-table')
             $('<td>').appendTo(tr).addClass('ui-name').append($('<span>').text(name))
-            $('<td>').appendTo(tr).addClass('ui-setting').append(setting.elt)
-            setting.activate()
+            $('<td>').appendTo(tr).addClass('ui-control').append(control.elt)
+            control.activate()
         }
     }
 
     clear() {
-        this.settings = {}
-        this.defaultVariant = {}
+        this.controls = {}
+        this.defaultValues = {}
     }
 
-    loadVariant(variant: Variant) {
-        for (const name in variant)
-            this.settings[name].value = variant[name].toString()
+    loadValues(values: Values) {
+        for (const name in values)
+            this.controls[name].value = values[name]
     }
 }
     
 export function view(_viewOptions: ViewOptions) {
-    if (!Settings.current)
+    if (!Controls.current)
         return
-    Settings.current.viewOptions = _viewOptions
+    Controls.current.viewOptions = _viewOptions
 }
 
 type SliderOptions = {
@@ -73,7 +73,7 @@ type SliderOptions = {
     value: number,
 }
 
-class Slider implements Setting<number> {
+class Slider implements Control<number> {
 
     elt: HTMLElement
     inputElt: HTMLInputElement
@@ -117,23 +117,23 @@ class Slider implements Setting<number> {
 
 export function slider(options: SliderOptions) {
 
-    if (!Settings.current)
+    if (!Controls.current)
         return
 
-    // remember default settings
-    Settings.current.defaultVariant[options.name] = options.value
+    // remember default controls
+    Controls.current.defaultValues[options.name] = options.value
 
     // create Slider
-    let setting = Settings.current.settings[options.name]
-    if (!setting) {
+    let control = Controls.current.controls[options.name]
+    if (!control) {
         log('new slider', options.min, options.max, options.step, options.value)
-        setting = new Slider(options)
+        control = new Slider(options)
 
         //.attr('id', 'slider-' + name
-        Settings.current.settings[options.name] = setting
+        Controls.current.controls[options.name] = control
     }
-    log('value', options.name, setting.value)
-    return parseFloat(setting.value)
+    log('value', options.name, control.value)
+    return parseFloat(control.value)
 }
 
 //
@@ -145,7 +145,7 @@ type CheckboxOptions = {
     value: boolean,
 }
 
-class Checkbox implements Setting<boolean> {
+class Checkbox implements Control<boolean> {
 
     elt: HTMLElement
     inputElt: HTMLInputElement
@@ -179,23 +179,23 @@ class Checkbox implements Setting<boolean> {
 
 export function checkbox(options: CheckboxOptions) {
 
-    if (!Settings.current)
+    if (!Controls.current)
         return
 
-    // remember default settings
-    Settings.current.defaultVariant[options.name] = options.value
+    // remember default controls
+    Controls.current.defaultValues[options.name] = options.value
 
     // create Checkbox
-    let setting = Settings.current.settings[options.name]
-    if (!setting) {
+    let control = Controls.current.controls[options.name]
+    if (!control) {
         log('new checkbox', options.value)
-        setting = new Checkbox(options)
+        control = new Checkbox(options)
 
         //.attr('id', 'checkbox-' + name
-        Settings.current.settings[options.name] = setting
+        Controls.current.controls[options.name] = control
     }
-    log('value', options.name, setting.value)
-    return setting.value
+    log('value', options.name, control.value)
+    return control.value
 }
 
 //
@@ -390,7 +390,9 @@ class CatRom extends Fun {
     }
 }
 
-class Curve implements Setting<Pt[]> {
+type CurveValue = {kind: string, pts: Pt[]}
+
+class Curve implements Control<CurveValue> {
     
     static kinds: {[name: string]: (pts: Pt[]) => Fun} = {
         'cubic': (pts: Pt[]) => new Spline(pts, 'cubic'),
@@ -425,11 +427,13 @@ class Curve implements Setting<Pt[]> {
     }
 
     get value() {
-        return this.fun.pts
+        return {kind: this.kind, pts: this.fun.pts}
     }
 
-    set value(pts: Pt[]) {
-        this.fun.pts = pts
+    set value(value) {
+        this.kind = value.kind
+        this.fun = Curve.kinds[this.kind](value.pts)
+        this.draw(true)
     }
 
     // curve widget dimensions
@@ -460,9 +464,10 @@ class Curve implements Setting<Pt[]> {
     // which control point event is targeted at
     hit(e: any) {
         const rect = e.target.getBoundingClientRect()
+        const pts = this.fun.pts
         let x = e.clientX! - rect.left, y = e.clientY! - rect.top
-        for (let i = 0; i < this.value.length; i++) {
-            const s = Curve.toScreen(this.value[i].x, this.value[i].y)
+        for (let i = 0; i < pts.length; i++) {
+            const s = Curve.toScreen(pts[i].x, pts[i].y)
             if ((x - s.x/Curve.factor)**2 + (y - s.y/Curve.factor)**2 < Curve.radius**2)
                 return i
         }
@@ -502,7 +507,7 @@ class Curve implements Setting<Pt[]> {
         ctx.fill()
 
         // draw the control points
-        for (const p of this.value) {
+        for (const p of this.fun.pts) {
             ctx.strokeStyle = 'rgb(255,0,0)'
             ctx.lineWidth = Curve.factor * 1
             ctx.beginPath()
@@ -529,7 +534,7 @@ class Curve implements Setting<Pt[]> {
         [0]
         for (const kind in Curve.kinds)
             $('<option>').attr('value', kind).text(kind).appendTo(kindSelect)
-        $('#ui tr:last-child .ui-name').addClass('curve-name').append(kindSelect)
+        $('#ui-table tr:last-child .ui-name').addClass('curve-name').append(kindSelect)
         kindSelect.value = this.kind
 
         $(this.elt).on('mousedown', (e) => {
@@ -538,14 +543,14 @@ class Curve implements Setting<Pt[]> {
             const moving = this.hit(e)
             if (moving < 0)
                 return
-            const value = this.value.slice(0) // work on copy because points will be resorted by Fun
+            const pts = this.fun.pts.slice(0) // work on copy because points will be resorted by Fun
 
             const mousemove = (e: any) => {
                 let {x, y} = this.fromMouse(e)
                 x = Math.min(Math.max(x, 0), 1) + Math.random() * 1e-5 // avoid equal xs
                 y = Math.min(Math.max(y, 0), 1)
-                value[moving] = {x, y}
-                this.value = value.slice(0)
+                pts[moving] = {x, y}
+                this.fun.pts = pts.slice(0)
                 this.draw(false)
             }
             $(this.elt).on('mousemove', mousemove);
@@ -583,26 +588,25 @@ class Curve implements Setting<Pt[]> {
 export function curve(options: {
     name: string,
     kind: string,
-    value: Pt[],
+    pts: Pt[],
     scale: number
 }) {
 
-    if (!Settings.current)
+    if (!Controls.current)
         return
 
-    // remember default settings
-    // xxx need to generalize Variant
-    //Settings.current.defaultVariant[options.name] = options.value
+    // remember default controls
+    Controls.current.defaultValues[options.name] = {kind: options.kind, pts: options.pts}
 
     // create Curve
-    let setting = Settings.current.settings[options.name]
-    if (!setting) {
+    let control = Controls.current.controls[options.name]
+    if (!control) {
         log('new curve')
-        setting = new Curve(options.kind, options.value)
-        Settings.current.settings[options.name] = setting
+        control = new Curve(options.kind, options.pts)
+        Controls.current.controls[options.name] = control
     }
     const scale = options.scale || 1
-    const fun = (<Curve>setting).fun.bind()
+    const fun = (<Curve>control).fun.bind()
     return (s: number) => fun(s) * scale
 }
 

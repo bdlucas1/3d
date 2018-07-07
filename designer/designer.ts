@@ -31,13 +31,18 @@ class Model {
     static live = true
     static hasChanged = false
     static eye: Eye
+    static lock: Lock
 
     name: string = 'N/A'
     stats: string = "N/A"
-    settings = new ui.Settings()
+    controls = new ui.Controls()
 
     variantsFn: string = 'N/A'
-    variants: {[name: string]: ui.Variant} = {}
+    variants: {[name: string]: {
+        values: ui.Values,
+        locked: boolean,
+        changed: boolean
+    }} = {}
     currentVariant: string = 'N/A'
 
     modelFn: string = 'N/A'
@@ -79,7 +84,7 @@ class Model {
         if (!this.components || this.fileChanged) {
             this.read()
         } else {
-            this.settings.activate()
+            this.controls.activate()
             this.show()
             message(this.stats)
         }
@@ -97,18 +102,20 @@ class Model {
             if (newValue != this.code) {
                 this.code = newValue
                 $('#component-selector').empty()
-                this.settings.clear()
+                this.controls.clear()
                 this.currentVariant = 'default'
+                Model.lock.setState({locked: true, changed: false})
                 this.construct()
             }
 
             // read variants file
             log('reading', this.variantsFn)
-            this.variants = {}
-            this.variants['default'] = {}
+            this.variants['default'] = {values: {}, locked: true, changed: false}
             const variants = JSON.parse(fs.readFileSync(this.variantsFn).toString())
-            for (const name in variants)
-                this.variants[name] = variants[name]
+            for (const name in variants) {
+                this.variants[name] = {values: {}, locked: true, changed: false}
+                this.variants[name].values = variants[name]
+            }
 
         } catch (e) {
             log(e)
@@ -133,15 +140,15 @@ class Model {
                 log('starting construction')
                 const libNames = ['ui', 'lib']
                 const loadedLibs = libNames.map((name) => require('./' + name + '.js'))
-                this.settings.activate() // assert already active?
+                this.controls.activate() // assert already active?
                 this.components = new Function('log', 'CSG', ...libNames, this.code)(log, CSG, ...loadedLibs);
 
                 // reset hasChanged flag
                 Model.hasChanged = false
                 $('#changed').css('background', 'none')
 
-                // remember default settings
-                this.variants['default'] = this.settings.defaultVariant
+                // remember default controls
+                this.variants['default'].values = this.controls.defaultValues
 
                 // message number of polys in each compoment, and construction time
                 this.stats = Object.keys(this.components!).map((name) => {
@@ -171,7 +178,7 @@ class Model {
         log('showing', this.name)
 
         // show ui
-        this.settings.activate()
+        this.controls.activate()
 
         // populate #variant-selctor, choosing initial variant
         let initialVariant: string | null = null
@@ -184,8 +191,10 @@ class Model {
                 .text(variant)
                 .appendTo('#variant-selector')
         }
-        if (initialVariant)
+        if (initialVariant) {
             $('#variant-selector').val(initialVariant)
+            Model.lock.setState(this.variants[initialVariant])
+        }
 
         // populate #component-selector, choose initialComponent
         let initialComponent: string | null = null
@@ -200,7 +209,7 @@ class Model {
         }
 
         // set up Viewer viewport
-        let viewOptions = this.settings.viewOptions
+        let viewOptions = this.controls.viewOptions
         const angle = Math.atan(viewOptions.height / 2 / viewOptions.distance) / Math.PI * 360
         Model.viewer.setCameraOptions({
             fov: angle,
@@ -218,7 +227,9 @@ class Model {
     setVariant(name: string) {
         log('setVariant', this.name, name)
         this.currentVariant = name
-        this.settings.loadVariant(this.variants[name])
+        const variant = this.variants[name]
+        this.controls.loadValues(variant.values)
+        Model.lock.setState(variant)
         this.construct()
     }
 
@@ -232,19 +243,63 @@ class Model {
 
 // ui calls this to indicate change in parameters
 export function change() {
+
     if (Model.current) {
+
+        const model = Model.current
+
+        // if we're locked create a new variant
+        if (model.variants[model.currentVariant].locked) {
+            let max = 0
+            for (let name in model.variants) {
+                const f = name.split(' ')
+                if (f[0] == 'variant') {
+                    const v = parseInt(f[1])
+                    if (v > max)
+                        max = v
+                }
+            }
+            const newName = 'variant ' + (max + 1)
+            model.currentVariant = newName
+            model.variants[newName] = {values: {}, locked: false, changed: false}
+        }
+
+        // we're changed
+        const variant = model.variants[model.currentVariant]
+        variant.changed = true
+
+        // record ui state in variant
+        const controls = ui.Controls.current!.controls
+        for (const name in controls)
+            variant.values[name] = controls[name].value
+
+        // update lock state
+        Model.lock.setState(variant)
+
+        // show or note change
         if (Model.live) {
             // this "working" cue is too similar to non-live "changed" cue
             //$('#changed').css('background', 'rgba(255,255,255,0.3)');
-            Model.current.construct()
+            model.construct()
         } else {
             $('#changed').css('background', 'rgba(255,255,255,0.7)');
             Model.hasChanged = true;
         }
+
+        // save variants to file
+        const variants: {[name: string]: ui.Values} = {}
+        for (let name in model.variants)
+            if (name != 'default')
+                variants[name] = model.variants[name].values
+        const variantString = JSON.stringify(variants, null, 4)
+        fs.writeFileSync(model.variantsFn, variantString)
     }
 }
 
 class Control {
+
+    static strokeStyle = 'rgb(150,150,150)'
+    static lineWidth = 8
 
     canvas: HTMLCanvasElement
     ctx: CanvasRenderingContext2D
@@ -254,8 +309,10 @@ class Control {
         if (title)
             $(this.canvas).attr('title', title)
         this.ctx = this.canvas.getContext('2d')!
-        this.ctx.strokeStyle = 'rgb(150,150,150)'
-        this.ctx.lineWidth = 8
+        this.ctx.strokeStyle = Control.strokeStyle
+        this.ctx.lineWidth = Control.lineWidth
+        this.ctx.lineCap = 'round'
+        this.ctx.lineJoin = 'round'
         this.ctx.beginPath()
     }
 }
@@ -306,6 +363,60 @@ class SaveVariant extends Control {
     }
 }
 
+class Lock extends Control {
+
+    constructor() {
+        super('Lock/unlock variant')
+        $(this.canvas).on('click', (e) => {
+            const model = Model.current!
+            // default is special - it can't be changed
+            if (model.currentVariant != 'default') {
+                const variant = model.variants[model.currentVariant]
+                variant.locked = !variant.locked
+                if (variant.locked)
+                    variant.changed = false
+                Model.lock.setState(variant)
+            }
+        })
+    }
+
+    setState(state: {locked: boolean, changed: boolean}) {
+        this.draw(state.locked, state.changed)
+    }
+
+    private draw(locked: boolean, changed: boolean) {
+
+        const y = 55
+        const r = 30
+        const p = Control.lineWidth / 2
+        const w = 75
+
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+        this.ctx.strokeStyle = changed? 'rgb(160,160,250)' : Control.strokeStyle
+        this.ctx.beginPath()
+        this.ctx.moveTo(50 - w/2, 100 - p)
+        this.ctx.lineTo(50 + w/2, 100 - p)
+        this.ctx.lineTo(50 + w/2, y)
+        this.ctx.lineTo(50 - w/2, y)
+        this.ctx.lineTo(50 - w/2, 100 - p)
+        this.ctx.moveTo(50 - r, y)
+        this.ctx.lineTo(50 - r, r + p)
+        this.ctx.stroke()
+        if (locked) {
+            this.ctx.beginPath()
+            this.ctx.moveTo(50 + r, y)
+            this.ctx.lineTo(50 + r, r + p)
+            this.ctx.stroke()
+            this.ctx.beginPath()
+            this.ctx.arc(50, r + p, r, Math.PI, 0)
+        } else {
+            this.ctx.beginPath()
+            this.ctx.arc(50, r + p, r, Math.PI, - 0.2 * Math.PI)
+        }
+        this.ctx.stroke()
+    }
+}
+
 class Eye extends Control {
 
     static width = 125
@@ -345,8 +456,6 @@ class Eye extends Control {
         const y = r * Math.cos(a)
 
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        this.ctx.lineCap = 'round'
 
         this.ctx.beginPath()
         this.ctx.arc(width/2, 50 + y, r, 0.75*circle - a, 0.75*circle + a)
@@ -396,7 +505,8 @@ $(window).on('load', () => {
     // add controls
     new ExportModels()
     new ResetVariant()
-    new SaveVariant()
+    //new SaveVariant()
+    Model.lock = new Lock()
     Model.eye = new Eye()
 
     // read model directory, populate menu
