@@ -1,6 +1,7 @@
 import * as $ from 'jquery'
 import {remote} from 'electron'
 import * as designer from '../designer/designer'
+import * as spline from 'commons-math-interpolation'
 const numeric = require('numeric')
 
 const log = remote.getGlobal('console').log
@@ -337,21 +338,21 @@ class Hybrid extends Parametric {
     }
 }
 
+type SplineFactory = (xs: number[], ys: number[]) => spline.UniFunction
+
 class Spline extends Fun {
 
-    static spline = require('commons-math-interpolation')
-
-    static kinds = {
-        'akima': {factory: Spline.spline.createAkimaSplineInterpolator, minPts: 5},
-        'cubic': {factory: Spline.spline.createCubicSplineInterpolator, minPts: 3},
-        'linear': {factory: Spline.spline.createLinearInterpolator, minPts: 2}
+    static kinds: {[kind: string]: {factory: SplineFactory, minPts: number}}  = {
+        'akima': {factory: spline.createAkimaSplineInterpolator, minPts: 5},
+        'cubic': {factory: spline.createCubicSplineInterpolator, minPts: 3},
+        'linear': {factory: spline.createLinearInterpolator, minPts: 2}
     }
 
-    factory: any
+    factory: SplineFactory
 
     constructor(pts: Pt[], kind: string) {
-        super(pts, (<any>Spline.kinds)[kind].minPts)
-        this.factory = (<any>Spline.kinds)[kind].factory
+        super(pts, Spline.kinds[kind].minPts)
+        this.factory = Spline.kinds[kind].factory
     }
 
     bind() {
