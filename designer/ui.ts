@@ -2,6 +2,7 @@ import * as $ from 'jquery'
 import {remote} from 'electron'
 import * as designer from '../designer/designer'
 import * as spline from 'commons-math-interpolation'
+const catrom = require('cat-rom-spline')
 const numeric = require('numeric')
 
 const log = remote.getGlobal('console').log
@@ -361,12 +362,43 @@ class Spline extends Fun {
     }
 }
 
+class CatRom extends Fun {
+
+    knot: number
+
+    constructor(pts: Pt[], knot: number) {
+        super(pts, 2)
+        this.knot = knot
+    }
+
+    bind() {
+        this.sort()
+        const p0 = {x: this.pts[0].x - 1e-6, y: this.pts[0].y}
+        const p1 = {x: this.pts[this.pts.length-1].x + 1e-6, y: this.pts[this.pts.length-1].y}
+        const pts = [p0].concat(this.pts, [p1])
+        const samples: number[][] = catrom(pts.map((p) => [p.x, p.y]), {samples: 10, knot: this.knot})
+        samples.sort((p: number[], q: number[]) => p[0] - q[0])
+        const xpoints: number[] = []
+        const ypoints: number[] = []
+        for (let i = 0; i < samples.length; i++) {
+            if (i==0 || samples[i][0] != samples[i-1][0]) {
+                xpoints.push(samples[i][0])
+                ypoints.push(samples[i][1])
+            }
+        }
+        return spline.createLinearInterpolator(xpoints, ypoints)
+    }
+}
+
 class Curve implements Setting<Pt[]> {
     
     static kinds: {[name: string]: (pts: Pt[]) => Fun} = {
         'cubic': (pts: Pt[]) => new Spline(pts, 'cubic'),
         'akima': (pts: Pt[]) => new Spline(pts, 'akima'),
         'linear': (pts: Pt[]) => new Spline(pts, 'linear'),
+        'cat-rom 0': (pts: Pt[]) => new CatRom(pts, 0.0),
+        'cat-rom .5': (pts: Pt[]) => new CatRom(pts, 0.5),
+        'cat-rom 1': (pts: Pt[]) => new CatRom(pts, 1.0),
         'poly': (pts: Pt[]) => new Polynomial(pts),
         '¼ wave': (pts: Pt[]) => new Fourier(pts, 4),
         '½ wave': (pts: Pt[]) => new Fourier(pts, 2),
