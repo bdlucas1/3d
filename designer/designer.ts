@@ -16,7 +16,7 @@ function now() {
     return new Date().getTime()
 }
 
-function message(msg: string) {
+export function message(msg: string) {
     $('#message')[0].innerText = msg
 }
 
@@ -234,7 +234,8 @@ class Model {
 export function change() {
     if (Model.current) {
         if (Model.live) {
-            $('#changed').css('background', 'rgba(255,255,255,0.3)');
+            // this "working" cue is too similar to non-live "changed" cue
+            //$('#changed').css('background', 'rgba(255,255,255,0.3)');
             Model.current.construct()
         } else {
             $('#changed').css('background', 'rgba(255,255,255,0.7)');

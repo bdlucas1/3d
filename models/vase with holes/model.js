@@ -4,7 +4,7 @@ const thickness = ui.slider({name: 'thickness', min: 0.01, max: 0.1, step: 0.005
 // const f = (s) => lib.wave(0.0, 0.9, 0.25, .4)(s) - 0.1 * s
 const diameter = ui.slider({name: 'vase diameter', min: 0.1, max: 2, step: 0.01, value: 1.05})
 const pts = [{x: 0, y: 0.4}, {x: 0.25, y: 0.523}, {x: 0.5, y: 0.396}, {x: 0.75, y: 0.191}, {x: 1, y: 0.212}]
-const profile = ui.curve({name: 'profile', kind: 'hybrid', value: pts, scale: diameter / 2})
+const profile = ui.curve({name: 'profile', kind: 'cubic', value: pts, scale: diameter / 2})
 
 const nh = ui.slider({name: 'n horizontal', min: 1, max: 20, value: 7})
 const nv = ui.slider({name: 'n vertical', min: 1, max: 20, value: 9})

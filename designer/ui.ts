@@ -205,12 +205,24 @@ type Pt = {x: number, y: number}
 abstract class Fun {
 
     pts: Pt[]
+    minPts: number
+    maxPts: number
 
-    constructor(pts: Pt[]) {
+    constructor(pts: Pt[], minPts: number = 1, maxPts: number = Infinity) {
+        if (pts.length > maxPts)
+            throw 'too many points'
+        if (pts.length < minPts)
+            throw 'too few points'
         this.pts = pts
+        this.minPts = minPts
+        this.maxPts = maxPts
     }
 
     abstract bind(): (x: number) => number
+
+    sort() {
+        this.pts.sort((p, q) => p.x - q.x)
+    }
 
     rescale() {
         const curve = this.bind()
@@ -224,14 +236,22 @@ abstract class Fun {
     }
 
     add(p: Pt) {
+        if (this.pts.length >= this.maxPts) {
+            designer.message('too many points')
+            return
+        }
         this.pts.push(p)
-        this.pts.sort((p, q) => p.x - q.x)
         log('pts', this.pts)
     }
 
     remove(i: number) {
+        if (this.pts.length <= this.minPts) {
+            designer.message('too few points')
+            return
+        }
         this.pts.splice(i, 1)
     }
+
 }
 
 abstract class Parametric extends Fun {
@@ -240,8 +260,8 @@ abstract class Parametric extends Fun {
 
     parms: number[]
 
-    constructor(pts: Pt[]) {
-        super(pts)
+    constructor(pts: Pt[], minPts: number = 1, maxPts: number = Infinity) {
+        super(pts, minPts, maxPts)
         this.parms = this.pts.map(() => 0)
     }
 
@@ -303,7 +323,7 @@ class Polynomial extends Parametric {
 class Hybrid extends Parametric {
 
     constructor(pts: Pt[]) {
-        super(pts)
+        super(pts, 5, 5)
         this.parms = [1, 0.5, 0, 0, 0.5]
     }
 
@@ -317,32 +337,39 @@ class Hybrid extends Parametric {
     }
 }
 
-class Lines extends Fun {
+class Spline extends Fun {
+
+    static spline = require('commons-math-interpolation')
+
+    static kinds = {
+        'akima': {factory: Spline.spline.createAkimaSplineInterpolator, minPts: 5},
+        'cubic': {factory: Spline.spline.createCubicSplineInterpolator, minPts: 3},
+        'linear': {factory: Spline.spline.createLinearInterpolator, minPts: 2}
+    }
+
+    factory: any
+
+    constructor(pts: Pt[], kind: string) {
+        super(pts, (<any>Spline.kinds)[kind].minPts)
+        this.factory = (<any>Spline.kinds)[kind].factory
+    }
 
     bind() {
-        return (x: number) => {
-            for (let i = 0; i < this.pts.length - 1; i++) {
-                const x0 = this.pts[i].x
-                const x1 = this.pts[i+1].x
-                if (x0 <= x && x <= x1) {
-                    const y0 = this.pts[i].y
-                    const y1 = this.pts[i+1].y
-                    return y0 + (x - x0) / (x1 - x0) * (y1 - y0)
-                }                
-            }
-            return NaN
-        }
+        this.sort()
+        return this.factory(this.pts.map((p) => p.x), this.pts.map((p) => p.y))
     }
 }
 
 class Curve implements Setting<Pt[]> {
     
     static kinds: {[name: string]: (pts: Pt[]) => Fun} = {
+        'cubic': (pts: Pt[]) => new Spline(pts, 'cubic'),
+        'akima': (pts: Pt[]) => new Spline(pts, 'akima'),
+        'linear': (pts: Pt[]) => new Spline(pts, 'linear'),
         'poly': (pts: Pt[]) => new Polynomial(pts),
         '¼ wave': (pts: Pt[]) => new Fourier(pts, 4),
         '½ wave': (pts: Pt[]) => new Fourier(pts, 2),
         '1 wave': (pts: Pt[]) => new Fourier(pts, 1),
-        'lines': (pts: Pt[]) => new Lines(pts),
         'hybrid': (pts: Pt[]) => new Hybrid(pts),
     }
 
@@ -456,10 +483,15 @@ class Curve implements Setting<Pt[]> {
         // add kind selector underneath name
         const kindSelect = <HTMLSelectElement>$('<select>')
             .on('change', () => {
-                this.kind = kindSelect.value
-                this.fun = Curve.kinds[this.kind](this.fun.pts)
-                this.draw(true)
-                designer.change()
+                try {
+                    this.fun = Curve.kinds[kindSelect.value](this.fun.pts)
+                    this.kind = kindSelect.value
+                    this.draw(true)
+                    designer.change()
+                } catch (e) {
+                    designer.message(e)
+                    kindSelect.value = this.kind
+                }
             })
         [0]
         for (const kind in Curve.kinds)
@@ -470,14 +502,17 @@ class Curve implements Setting<Pt[]> {
         $(this.elt).on('mousedown', (e) => {
 
             // which point are we moving (if any)?
-            let moving = this.hit(e)
+            const moving = this.hit(e)
             if (moving < 0)
                 return
+            const value = this.value.slice(0) // work on copy because points will be resorted by Fun
 
             const mousemove = (e: any) => {
-                const {x, y} = this.fromMouse(e)
-                this.value[moving].x = Math.min(Math.max(x, 0), 1)
-                this.value[moving].y = Math.min(Math.max(y, 0), 1)
+                let {x, y} = this.fromMouse(e)
+                x = Math.min(Math.max(x, 0), 1) + Math.random() * 1e-5 // avoid equal xs
+                y = Math.min(Math.max(y, 0), 1)
+                value[moving] = {x, y}
+                this.value = value.slice(0)
                 this.draw(false)
             }
             $(this.elt).on('mousemove', mousemove);
