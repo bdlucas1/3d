@@ -41,7 +41,8 @@ class Model {
     variants: {[name: string]: {
         values: ui.Values,
         locked: boolean,
-        changed: boolean
+        changed: boolean,
+        deleted: boolean
     }} = {}
     currentVariant: string = 'N/A'
 
@@ -110,10 +111,10 @@ class Model {
 
             // read variants file
             log('reading', this.variantsFn)
-            this.variants['default'] = {values: {}, locked: true, changed: false}
+            this.variants['default'] = {values: {}, locked: true, changed: false, deleted: false}
             const variants = JSON.parse(fs.readFileSync(this.variantsFn).toString())
             for (const name in variants) {
-                this.variants[name] = {values: {}, locked: true, changed: false}
+                this.variants[name] = {values: {}, locked: true, changed: false, deleted: false}
                 this.variants[name].values = variants[name]
             }
 
@@ -172,6 +173,34 @@ class Model {
         }, 100) // setTimeout
     }
 
+    populateVariantSelector() {
+        let initialVariant: string | null = null
+        $('#variant-selector').empty()
+        for (const name in this.variants!) {
+            if (!initialVariant || name == this.currentVariant)
+                initialVariant = name
+            $('<option>')
+                .attr('value', name)
+                .text(name)
+                .addClass(this.variants![name].deleted? 'deleted' : '')
+                .appendTo('#variant-selector')
+        }
+        if (initialVariant) {
+            $('#variant-selector').val(initialVariant)
+            Model.lock.setState(this.variants[initialVariant])
+        }
+    }
+
+    // save variants to file
+    saveVariants() {
+        const variants: {[name: string]: ui.Values} = {}
+        for (let name in this.variants)
+            if (name != 'default' && !this.variants[name].deleted)
+                variants[name] = this.variants[name].values
+        const variantString = JSON.stringify(variants, null, 4)
+        fs.writeFileSync(this.variantsFn, variantString)
+    }
+
     // show our components and ui
     show() {
 
@@ -181,20 +210,7 @@ class Model {
         this.controls.activate()
 
         // populate #variant-selctor, choosing initial variant
-        let initialVariant: string | null = null
-        $('#variant-selector').empty()
-        for (const variant in this.variants!) {
-            if (!initialVariant || variant == this.currentVariant)
-                initialVariant = variant
-            $('<option>')
-                .attr('value', variant)
-                .text(variant)
-                .appendTo('#variant-selector')
-        }
-        if (initialVariant) {
-            $('#variant-selector').val(initialVariant)
-            Model.lock.setState(this.variants[initialVariant])
-        }
+        this.populateVariantSelector()
 
         // populate #component-selector, choose initialComponent
         let initialComponent: string | null = null
@@ -228,6 +244,10 @@ class Model {
         log('setVariant', this.name, name)
         this.currentVariant = name
         const variant = this.variants[name]
+        if (variant.deleted) {
+            variant.deleted = false
+            this.populateVariantSelector()
+        }
         this.controls.loadValues(variant.values)
         Model.lock.setState(variant)
         this.construct()
@@ -261,7 +281,7 @@ export function change() {
             }
             const newName = 'variant ' + (max + 1)
             model.currentVariant = newName
-            model.variants[newName] = {values: {}, locked: false, changed: false}
+            model.variants[newName] = {values: {}, locked: false, changed: false, deleted: false}
         }
 
         // we're changed
@@ -287,12 +307,7 @@ export function change() {
         }
 
         // save variants to file
-        const variants: {[name: string]: ui.Values} = {}
-        for (let name in model.variants)
-            if (name != 'default')
-                variants[name] = model.variants[name].values
-        const variantString = JSON.stringify(variants, null, 4)
-        fs.writeFileSync(model.variantsFn, variantString)
+        model.saveVariants()
     }
 }
 
@@ -356,7 +371,9 @@ class UndoRedoVariant extends Control {
 }
 
 class DeleteVariant extends Control {
+
     constructor() {
+
         super('#variant-controls', 'Delete variant')
         const p = 10
         this.ctx.moveTo(p, p)
@@ -364,6 +381,14 @@ class DeleteVariant extends Control {
         this.ctx.moveTo(p, 100 - p)
         this.ctx.lineTo(100 - p, p)
         this.ctx.stroke()
+
+        $(this.canvas).on('click', (e) => {
+            const model = Model.current!
+            model.variants[model.currentVariant].deleted = true
+            model.populateVariantSelector()
+            model.setVariant('default')
+            model.saveVariants()
+        })
     }
 }
 

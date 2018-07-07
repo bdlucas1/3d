@@ -70,6 +70,10 @@ body {
     outline: none;
 }
 
+option.deleted {
+    text-decoration: line-through;
+}
+
 #ui {
     position: relative;
 }
