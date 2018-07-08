@@ -26,6 +26,5 @@ vase = lib.vase({
     twist
 })
 
-
 return {vase, outer: vase.outer, inner: vase.inner}
 
