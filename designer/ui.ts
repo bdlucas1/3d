@@ -112,6 +112,7 @@ class Slider implements Control<number> {
 
     set value(value: number) {
         this.inputElt.value = value.toString()
+        $(this.echoElt).text(this.inputElt.value)
     }
 }
 
@@ -233,8 +234,9 @@ abstract class Fun {
             const y = curve(i / 100)
             if (y > max) max = y
         }
-        for (let i = 0; i < this.pts.length; i++)
-            this.pts[i].y /= max
+        if (max < 0.95 || max > 1.05) // avoid creeping rescale
+            for (let i = 0; i < this.pts.length; i++)
+                this.pts[i].y /= max
     }
 
     add(p: Pt) {

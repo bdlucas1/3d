@@ -20,13 +20,31 @@ export function message(msg: string) {
     $('#message')[0].innerText = msg
 }
 
+type CSG = any // xxx
+type Components = {[name: string]: CSG}
+
+type Variant = {
+    name: string,
+    values: ui.Values,
+    locked: boolean,
+    changed: boolean,
+    deleted: boolean,
+    components: Components | null,
+    currentComponent: string | null,
+    stats: string
+}
+
+function emptyVariant(name: string, locked: boolean) {
+    return {name, values: {}, locked, changed: false, deleted: false, components: null, currentComponent: null, stats: 'N/A'}
+}
+
 class Model {
 
     static dn = '../models'
     static current: Model | null = null
     static models: {[name: string]: Model} = {}
     static viewer: any
-    static csg: any
+    static csg: CSG
 
     static live = true
     static hasChanged = false
@@ -34,23 +52,15 @@ class Model {
     static lock: Lock
 
     name: string = 'N/A'
-    stats: string = "N/A"
     controls = new ui.Controls()
 
     variantsFn: string = 'N/A'
-    variants: {[name: string]: {
-        values: ui.Values,
-        locked: boolean,
-        changed: boolean,
-        deleted: boolean
-    }} = {}
-    currentVariant: string = 'N/A'
+    currentVariant: Variant = emptyVariant('default', true)
+    variants: {[name: string]: Variant} = {'default': this.currentVariant}
 
     modelFn: string = 'N/A'
     fileChanged: boolean = true
     code: string = "N/A"
-    components: {[name: string]: any} | null = null
-    currentComponent: string = 'N/A'
 
     constructor(name: string) {
     
@@ -82,12 +92,12 @@ class Model {
         Model.current = this
 
         // read if needed, else just show
-        if (!this.components || this.fileChanged) {
+        if (this.fileChanged) {
             this.read()
         } else {
             this.controls.activate()
             this.show()
-            message(this.stats)
+            message(this.currentVariant.stats)
         }
     }
 
@@ -104,17 +114,16 @@ class Model {
                 this.code = newValue
                 $('#component-selector').empty()
                 this.controls.clear()
-                this.currentVariant = 'default'
+                this.currentVariant = this.variants['default']
                 Model.lock.setState({locked: true, changed: false})
                 this.construct()
             }
 
             // read variants file
             log('reading', this.variantsFn)
-            this.variants['default'] = {values: {}, locked: true, changed: false, deleted: false}
             const variants = JSON.parse(fs.readFileSync(this.variantsFn).toString())
             for (const name in variants) {
-                this.variants[name] = {values: {}, locked: true, changed: false, deleted: false}
+                this.variants[name] = emptyVariant(name, true)
                 this.variants[name].values = variants[name]
             }
 
@@ -142,7 +151,7 @@ class Model {
                 const libNames = ['ui', 'lib']
                 const loadedLibs = libNames.map((name) => require('./' + name + '.js'))
                 this.controls.activate() // assert already active?
-                this.components = new Function('log', 'CSG', ...libNames, this.code)(log, CSG, ...loadedLibs);
+                this.currentVariant.components = new Function('log', 'CSG', ...libNames, this.code)(log, CSG, ...loadedLibs);
 
                 // reset hasChanged flag
                 Model.hasChanged = false
@@ -152,11 +161,11 @@ class Model {
                 this.variants['default'].values = this.controls.defaultValues
 
                 // message number of polys in each compoment, and construction time
-                this.stats = Object.keys(this.components!).map((name) => {
-                    const polys = this.components![name].polygons
+                this.currentVariant.stats = Object.keys(this.currentVariant.components!).map((name) => {
+                    const polys = this.currentVariant.components![name].polygons
                     return name + ': ' + (polys? polys.length : 'none')
                 }).join(', ')
-                message(this.stats + ';    ' + (now() - start) + 'ms')
+                message(this.currentVariant.stats + ';    ' + (now() - start) + 'ms')
                 Model.eye.resting()
 
                 // show our components, variants, ui, and model
@@ -177,7 +186,7 @@ class Model {
         let initialVariant: string | null = null
         $('#variant-selector').empty()
         for (const name in this.variants!) {
-            if (!initialVariant || name == this.currentVariant)
+            if (!initialVariant || name == this.currentVariant.name)
                 initialVariant = name
             $('<option>')
                 .attr('value', name)
@@ -215,8 +224,8 @@ class Model {
         // populate #component-selector, choose initialComponent
         let initialComponent: string | null = null
         $('#component-selector').empty()
-        for (const component in this.components!) {
-            if (!initialComponent || component == this.currentComponent)
+        for (const component in this.currentVariant.components!) {
+            if (!initialComponent || component == this.currentVariant.currentComponent)
                 initialComponent = component
             $('<option>')
                 .attr('value', component)
@@ -242,21 +251,26 @@ class Model {
 
     setVariant(name: string) {
         log('setVariant', this.name, name)
-        this.currentVariant = name
         const variant = this.variants[name]
+        this.currentVariant = variant
         if (variant.deleted) {
             variant.deleted = false
             this.populateVariantSelector()
         }
         this.controls.loadValues(variant.values)
         Model.lock.setState(variant)
-        this.construct()
+        if (!this.currentVariant.components) {
+            this.construct()
+        } else {
+            this.setComponent(this.currentVariant.currentComponent!)
+            message(this.currentVariant.stats)
+        }
     }
 
     setComponent(name: string) {
         log('setComponent', this.name, name)
-        this.currentComponent = name
-        Model.csg = this.components![name]
+        this.currentVariant.currentComponent = name
+        Model.csg = this.currentVariant.components![name]
         Model.viewer.setCsg(Model.csg.rotateX(90))
     }
 }
@@ -269,7 +283,7 @@ export function change() {
         const model = Model.current
 
         // if we're locked create a new variant
-        if (model.variants[model.currentVariant].locked) {
+        if (model.currentVariant.locked) {
             let max = 0
             for (let name in model.variants) {
                 const f = name.split(' ')
@@ -280,21 +294,20 @@ export function change() {
                 }
             }
             const newName = 'variant ' + (max + 1)
-            model.currentVariant = newName
-            model.variants[newName] = {values: {}, locked: false, changed: false, deleted: false}
+            model.currentVariant = emptyVariant(newName, false)
+            model.variants[newName] = model.currentVariant
         }
 
         // we're changed
-        const variant = model.variants[model.currentVariant]
-        variant.changed = true
+        model.currentVariant.changed = true
 
         // record ui state in variant
         const controls = ui.Controls.current!.controls
         for (const name in controls)
-            variant.values[name] = controls[name].value
+            model.currentVariant.values[name] = controls[name].value
 
         // update lock state
-        Model.lock.setState(variant)
+        Model.lock.setState(model.currentVariant)
 
         // show or note change
         if (Model.live) {
@@ -344,10 +357,10 @@ class ExportModels extends Control {
         this.ctx.stroke()
         $(this.canvas).on('click', () => {
             const m = Model.current!
-            for (const name in m.components!) {
+            for (const name in m.currentVariant.components!) {
                 const fn = path.join(Model.dn, m.name, [m.currentVariant, name].join(' - ') + '.stl')
                 log('writing', fn)
-                const stl = io.stlSerializer.serialize(m.components![name], {binary: false})
+                const stl = io.stlSerializer.serialize(m.currentVariant.components![name], {binary: false})
                 fs.writeFileSync(fn, stl[0].toString())
             }
         })
@@ -384,7 +397,7 @@ class DeleteVariant extends Control {
 
         $(this.canvas).on('click', (e) => {
             const model = Model.current!
-            model.variants[model.currentVariant].deleted = true
+            model.currentVariant.deleted = true
             model.populateVariantSelector()
             model.setVariant('default')
             model.saveVariants()
@@ -411,12 +424,11 @@ class Lock extends Control {
         $(this.canvas).on('click', (e) => {
             const model = Model.current!
             // default is special - it can't be changed
-            if (model.currentVariant != 'default') {
-                const variant = model.variants[model.currentVariant]
-                variant.locked = !variant.locked
-                if (variant.locked)
-                    variant.changed = false
-                Model.lock.setState(variant)
+            if (model.currentVariant.name != 'default') {
+                model.currentVariant.locked = !model.currentVariant.locked
+                if (model.currentVariant.locked)
+                    model.currentVariant.changed = false
+                Model.lock.setState(model.currentVariant)
             }
         })
     }
