@@ -76,6 +76,13 @@ option.deleted {
 
 #ui {
     position: relative;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 1em;
+}
+
+#ui-div {
+    overflow: scroll;
 }
 
 #locker {
