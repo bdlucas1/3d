@@ -1,5 +1,6 @@
 import * as $ from 'jquery'
 import * as fs from 'fs'
+import * as os from 'os'
 import * as path from 'path'
 import * as ui from './ui'
 
@@ -140,6 +141,7 @@ class Model {
         Model.eye.working()
 
         const start = now()
+        const startCPU = os.cpus().reduce((a, b) => <number>a + b.times.user, 0)
 
         // defer so we will see the "constructing..." message
         setTimeout(() => {
@@ -152,6 +154,7 @@ class Model {
                 const loadedLibs = libNames.map((name) => require('./' + name + '.js'))
                 this.controls.activate() // assert already active?
                 this.currentVariant.components = new Function('log', 'CSG', ...libNames, this.code)(log, CSG, ...loadedLibs);
+                const endCPU = os.cpus().reduce((a, b) => a + b.times.user, 0)
 
                 // reset hasChanged flag
                 Model.hasChanged = false
@@ -165,7 +168,7 @@ class Model {
                     const polys = this.currentVariant.components![name].polygons
                     return name + ': ' + (polys? polys.length : 'none')
                 }).join(', ')
-                message(this.currentVariant.stats + ';    ' + (now() - start) + 'ms')
+                message(this.currentVariant.stats + ';    ' + (now() - start) + 'ms (' + (endCPU - startCPU) + 'ms)')
                 Model.eye.resting()
 
                 // show our components, variants, ui, and model

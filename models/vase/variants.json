@@ -5,7 +5,6 @@
         "diameter": 1.05,
         "profile": {
             "kind": "cubic",
-            "pts": [
                 {
                     "x": 0,
                     "y": 0.7221043526925585
