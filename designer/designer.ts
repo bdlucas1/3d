@@ -358,7 +358,7 @@ class ExportModels extends Control {
         $(this.canvas).on('click', () => {
             const m = Model.current!
             for (const name in m.currentVariant.components!) {
-                const fn = path.join(Model.dn, m.name, [m.currentVariant, name].join(' - ') + '.stl')
+                const fn = path.join(Model.dn, m.name, [m.currentVariant.name, name].join(' - ') + '.stl')
                 log('writing', fn)
                 const stl = io.stlSerializer.serialize(m.currentVariant.components![name], {binary: false})
                 fs.writeFileSync(fn, stl[0].toString())
