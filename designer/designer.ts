@@ -262,7 +262,7 @@ class Model {
         if (!this.currentVariant.components) {
             this.construct()
         } else {
-            this.setComponent(this.currentVariant.currentComponent!)
+            this.show()
             message(this.currentVariant.stats)
         }
     }
