@@ -56,7 +56,5 @@ return {
     holes,
     punch,
     vase,
-    outer: vase.outer,
-    inner: vase.inner
 }
 

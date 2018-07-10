@@ -33,7 +33,7 @@ function empty() {
 }
 exports.empty = empty
 
-function rod(options) {
+function shell(options) {
 
     options = options || {};
     var wedges = Math.floor(options.wedges) || 16;
@@ -41,8 +41,11 @@ function rod(options) {
     var path = options.path || line(vec3(0, -0.5, 0), vec3(0, 0.5, 0))
     var radius = options.radius || (() => 0.5);
     var twist = options.twist || 0
+    var flipped = options.flipped || false
 
-    var polygons = [];
+    var shell = [];
+    var rim0 = []
+    var rim1 = []
 
     for (var is = 0; is < slices; is++) {
 
@@ -84,19 +87,52 @@ function rod(options) {
             var p10 = point(p1, r10, w10)
             var p11 = point(p1, r11, w11)
 
-            if (is == 0 && r00 != 0 && r01 !=0) polygons.push(poly([vtx(p0), p00, p01]));
-            if (twist < 0) {
-                if (r10 != 0 || r11 != 0)       polygons.push(poly([p00, p10, p11]));
-                if (r01 != 0 || r00 != 0)       polygons.push(poly([p11, p01, p00]));
-            } else {
-                if (r00 != 0 || r01 != 0)       polygons.push(poly([p01, p00, p10]));
-                if (r11 != 0 || r10 != 0)       polygons.push(poly([p10, p11, p01]));
+            function add(...args) {
+                shell.push(flipped? poly(args.reverse()) : poly(args))
             }
-            if (is == slices-1 && r11 != 0 && r10 !=0) polygons.push(poly([vtx(p1), p11, p10]));
+
+            if (is == 0)
+                rim0.push(p00)
+            if (twist < 0) {
+                if (r10 != 0 || r11 != 0) add(p00, p10, p11)
+                if (r01 != 0 || r00 != 0) add(p11, p01, p00)
+            } else {
+                if (r00 != 0 || r01 != 0) add(p01, p00, p10)
+                if (r11 != 0 || r10 != 0) add(p10, p11, p01)
+            }
+            if (is == slices-1)
+                rim1.push(p10)
         }
     }
-    return CSG.fromPolygons(polygons);
+
+    return {shell, rim0, rim1}
 };
+
+function cap(pts, pt, flipped) {
+    var cap = []
+    for (var i = 0; i < pts.length; i++) {
+        var ply = [pts[i], pts[(i+1)%pts.length], vtx(pt)]
+        cap.push(poly(flipped? ply.reverse() : ply))
+    }
+    return cap
+}
+
+
+function rod(options) {
+
+    options = options || {};
+    var wedges = Math.floor(options.wedges) || 16;
+    var slices = Math.floor(options.slices) || 16;
+    var path = options.path || line(vec3(0, -0.5, 0), vec3(0, 0.5, 0))
+    var radius = options.radius || (() => 0.5);
+    var twist = options.twist || 0
+
+    var s = shell(options)
+    var cap0 = cap(s.rim0, path(0), false)
+    var cap1 = cap(s.rim1, path(1), true)
+    var polygons = [s.shell, cap0, cap1].reduce((a,b) => a.concat(b))
+    return CSG.fromPolygons(polygons)
+}
 exports.rod = rod
 
 function cone(options) {
@@ -105,11 +141,15 @@ function cone(options) {
     var radius = options.radius || 0.5
     var base = options.base || [0, -0.5, 0]
     var tip = options.tip || [0, 0.5, 0]
+    var path = line(base, tip)
 
-    return rod(override(options, {
+    var s = shell(override(options, {
         radius: (s) => (1-s) * radius,
-        path: line(base, tip)
+        path
     }))
+    var cap0 = cap(s.rim0, path(0), false)
+    var polygons = s.shell.concat(cap0)
+    return CSG.fromPolygons(polygons)
 }
 exports.cone = cone
 
@@ -137,22 +177,39 @@ function vase(options) {
     var path = options.path || line(vec3(0, -1, 0), vec3(0, 1, 0))
     var base = options.base==undefined? 1 : options.base // relative to thickness at base
 
-    var outer = rod(override(options, {
+    // outer
+    var outer = shell(override(options, {
         path: path
     }))
+    var outerCap = cap(outer.rim0, path(0), false)
 
+    // inner
     var height = path(1).y - path(0).y
     var b = thickness(0, 0) * 2 * radius(0, 0)/ height // xxx min thickness over all a
-    const ss = (s) => b + (1.01-b) * s
-    var inner = rod(override(options, {
+    const ss = (s) => b + (1-b) * s
+    var inner = shell(override(options, {
         path: (s) => path(ss(s)),
-        radius: (s, a) => radius(ss(s), a) - thickness(ss(s), a)
+        radius: (s, a) => radius(ss(s), a) - thickness(ss(s), a),
+        flipped: true
     }))
+    var innerCap = cap(inner.rim0, path(ss(0)), true)
 
-    const vase = outer.subtract(inner)
-    vase.outer = outer
-    vase.inner = inner
-    return vase
+    // rim
+    var rim = []
+    const n = inner.rim1.length
+    for (var i = 0; i < n; i++)
+        rim.push(poly([inner.rim1[i], inner.rim1[(i+1)%n], outer.rim1[(i+1)%n], outer.rim1[i]]))
+
+    // put it all together
+    var polygons = [
+        inner.shell,
+        innerCap,
+        outer.shell,
+        outerCap,
+        rim
+    ].reduce((a,b) => a.concat(b))
+    return CSG.fromPolygons(polygons)
 }
 exports.vase = vase
+
 
