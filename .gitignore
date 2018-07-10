@@ -1,0 +1,7 @@
+.*
+!.gitignore
+node_modules
+*.log
+designer/designer.js
+designer/main.js
+designer/ui.js
