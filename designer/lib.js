@@ -47,10 +47,19 @@ function shell(options) {
     var rim0 = []
     var rim1 = []
 
-    for (var is = 0; is < slices; is++) {
+    for (var s0 = 0; s0 < 1; s0 = s1) {
 
-        var p0 = path(is / slices)
-        var p1 = path((is+1) / slices)
+        var eps = 1e-3
+        var d2rds2 = ((radius(s0+eps, 0) - radius(s0, 0)) / eps - (radius(s0, 0) - radius(s0-eps, 0)) / eps) / eps
+        log('xxx',d2rds2) 
+
+        // step along the path
+        var ds = 1 / slices
+        var s1 = s0 + ds
+        if (s1 > 1 - ds / 4)
+            s1 = 1
+        var p0 = path(s0)
+        var p1 = path(s1)
 
         var axisZ = p1.minus(p0).unit()
         var isY = Math.abs(axisZ.y) > 0.5? 1 : 0;
@@ -62,15 +71,15 @@ function shell(options) {
             var w0 = (iw / wedges)
             var w1 = ((iw+1) / wedges)
 
-            var w00 = (is / slices) * twist + w0
-            var w01 = (is / slices) * twist + w1
-            var w10 = ((is+1) / slices) * twist + w0
-            var w11 = ((is+1) / slices) * twist + w1
+            var w00 = (s0) * twist + w0
+            var w01 = (s0) * twist + w1
+            var w10 = (s1) * twist + w0
+            var w11 = (s1) * twist + w1
 
-            var r00 = radius(is / slices, w0)
-            var r01 = radius(is / slices, w1)
-            var r10 = radius((is+1) / slices, w0)
-            var r11 = radius((is+1) / slices, w1)
+            var r00 = radius(s0, w0)
+            var r01 = radius(s0, w1)
+            var r10 = radius(s1, w0)
+            var r11 = radius(s1, w1)
 
             function point(p, r, w) {
                 var angle = w * Math.PI * 2;
@@ -91,7 +100,7 @@ function shell(options) {
                 shell.push(flipped? poly(args.reverse()) : poly(args))
             }
 
-            if (is == 0)
+            if (s0 == 0)
                 rim0.push(p00)
             if (twist < 0) {
                 if (r10 != 0 || r11 != 0) add(p00, p10, p11)
@@ -100,7 +109,7 @@ function shell(options) {
                 if (r00 != 0 || r01 != 0) add(p01, p00, p10)
                 if (r11 != 0 || r10 != 0) add(p10, p11, p01)
             }
-            if (is == slices-1)
+            if (s1 == 1)
                 rim1.push(p10)
         }
     }
