@@ -762,6 +762,7 @@
         },
         "twist": -0.5,
         "interior lobes": 0
+<<<<<<< HEAD
     },
     "variant 17": {
        "detail": 50,
@@ -998,5 +999,7 @@
        },
        "twist": 0.05,
        "interior lobes": 0
+=======
+>>>>>>> ceea3bd260f0f8457042ac1fbc752725eabcceac
     }
 }
