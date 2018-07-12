@@ -2,6 +2,7 @@
 !.gitignore
 node_modules
 *.log
+*.diff
 *.stl
 compare
 designer/designer.js

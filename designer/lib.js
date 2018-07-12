@@ -8,6 +8,7 @@ var log = require("electron").remote.getGlobal('console').log;
 var CSG = require('@jscad/CSG').CSG
 
 const vec3 = (...args) => (args instanceof CSG.Vector3D? args : new CSG.Vector3D(...args))
+const vec2 = (...args) => (args instanceof CSG.Vector2D? args : new CSG.Vector3D(...args))
 const vtx = (...args) => new CSG.Vertex(...args)
 const poly = (...args) => new CSG.Polygon(...args)
 
@@ -47,30 +48,36 @@ function shell(options) {
     var rim0 = []
     var rim1 = []
 
-    const eps = 1e-3
-    const d = (f) => (s) => (f(s+eps/2) - f(s-eps/2)) / eps
-    const r = (s) => radius(s, 0)
-    const R = (f) => (s) => Math.pow(1 + d(f)(s)**2, 1.5) / Math.abs(d(d(f))(s))
-    var a = 0.02
-    const ds = (s) => Math.min(a * R(r)(s), 2 / slices)
-
-    /*
-    for (var i = 0; i < 10; i++) {
-        for (var s = 0, n = 0; s <= 1; s += ds(s), n++)
-            //log('aaa s', s, 'r', r(s), 'R', R(r)(s), 'ds', ds(s))
-            ;
-        log('xxx', n, a, a * n / slices)
-        a *= n / slices
+    // compute variable length steps with goal to ensure a maximum angle between adjacent steps
+    var minStep = 1 / slices / 10
+    var maxStep = 1.5 / slices
+    var steps
+    var a = minStep
+    for (var i = 0; i < 5; i++) {
+        const r = (s) => radius(s, 0)
+        var p0 = vec2(-minStep, r(-minStep))
+        var p1 = vec2(0, r(0))
+        steps = [0]
+        for (var s = minStep; s <= 1; s += minStep) {
+            var p2 = vec2(s, r(s))
+            var d01 = p1.minus(p0).unit()
+            var d12 = p2.minus(p1).unit()
+            if (Math.acos(d01.dot(d12)) > a || s - steps[steps.length-1] > maxStep) {
+                steps.push(s)
+                p0 = p1
+                p1 = p2
+            }
+        }
+        a *= steps.length / slices
     }
-    */
-
-    for (var s0 = 0; s0 < 1; s0 = s1) {
+    steps = steps.map((s) => s / steps[steps.length - 1])
+    log(steps.length + ' steps')
+            
+    for (var i = 1; i < steps.length; i++) {
 
         // step along the path
-        var ds0 = 1 / slices // ds(s0)
-        var s1 = s0 + ds0
-        if (s1 > 1 - ds0 / 4)
-            s1 = 1
+        var s0 = steps[i-1]
+        var s1 = steps[i]
         var p0 = path(s0)
         var p1 = path(s1)
 
