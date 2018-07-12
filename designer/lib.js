@@ -47,16 +47,29 @@ function shell(options) {
     var rim0 = []
     var rim1 = []
 
+    const eps = 1e-3
+    const d = (f) => (s) => (f(s+eps/2) - f(s-eps/2)) / eps
+    const r = (s) => radius(s, 0)
+    const R = (f) => (s) => Math.pow(1 + d(f)(s)**2, 1.5) / Math.abs(d(d(f))(s))
+    var a = 0.02
+    const ds = (s) => Math.min(a * R(r)(s), 2 / slices)
+
+    /*
+    for (var i = 0; i < 10; i++) {
+        for (var s = 0, n = 0; s <= 1; s += ds(s), n++)
+            //log('aaa s', s, 'r', r(s), 'R', R(r)(s), 'ds', ds(s))
+            ;
+        log('xxx', n, a, a * n / slices)
+        a *= n / slices
+    }
+    */
+
     for (var s0 = 0; s0 < 1; s0 = s1) {
 
-        var eps = 1e-3
-        var d2rds2 = ((radius(s0+eps, 0) - radius(s0, 0)) / eps - (radius(s0, 0) - radius(s0-eps, 0)) / eps) / eps
-        log('xxx',d2rds2) 
-
         // step along the path
-        var ds = 1 / slices
-        var s1 = s0 + ds
-        if (s1 > 1 - ds / 4)
+        var ds0 = 1 / slices // ds(s0)
+        var s1 = s0 + ds0
+        if (s1 > 1 - ds0 / 4)
             s1 = 1
         var p0 = path(s0)
         var p1 = path(s1)
