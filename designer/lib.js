@@ -48,36 +48,48 @@ function shell(options) {
     var rim0 = []
     var rim1 = []
 
-    // compute variable length steps with goal to ensure a maximum angle between adjacent steps
-    var minStep = 1 / slices / 10
-    var maxStep = 1.5 / slices
-    var steps
-    var a = minStep
-    for (var i = 0; i < 5; i++) {
-        const r = (s) => radius(s, 0)
-        var p0 = vec2(-minStep, r(-minStep))
-        var p1 = vec2(0, r(0))
-        steps = [0]
-        for (var s = minStep; s <= 1; s += minStep) {
-            var p2 = vec2(s, r(s))
-            var d01 = p1.minus(p0).unit()
-            var d12 = p2.minus(p1).unit()
-            if (Math.acos(d01.dot(d12)) > a || s - steps[steps.length-1] > maxStep) {
-                steps.push(s)
-                p0 = p1
-                p1 = p2
+    log('xxx wedges', wedges)
+
+    // compute variable length steps with goal to limit angle between chord and tangents
+    function steps(f, n) {
+        const eps = 1e-6
+        const tangent = (x) => vec2(eps, f(x+eps) - f(x)).unit()
+        const angle = (v0, v1) => Math.acos(v1.dot(v0)) // assumes unit vectors
+        var minStep = 1 / n / 10
+        var maxStep = 1.5 / n
+        var xs = []
+        var a = minStep
+        for (var i = 0; i < 5; i++) {
+            var x0 = 0
+            var pt0 = vec2(x0, f(x0))
+            var tan0 = tangent(x0)
+            xs = [x0]
+            for (var x1 = minStep; x1 <= 1; x1 += minStep) {
+                var pt1 = vec2(x1, f(x1))
+                var tan1 = tangent(x1)
+                var chord = pt1.minus(pt0).unit()
+                if (angle(chord, tan0) > a || angle(chord, tan1) > a || x1 - x0 > maxStep) {
+                    xs.push(x0)
+                    x0 = x1
+                    pt0 = pt1
+                    tan0 = tan1
+                }
             }
+            a *= xs.length / n
         }
-        a *= steps.length / slices
+        xs = xs.map((s) => s / xs[xs.length - 1])
+        log(xs.length + ' xs')
+        return xs
     }
-    steps = steps.map((s) => s / steps[steps.length - 1])
-    log(steps.length + ' steps')
-            
-    for (var i = 1; i < steps.length; i++) {
+
+
+    var sliceSteps = steps((x) => radius(x, 0), slices + 1)
+
+    for (var is = 1; is < sliceSteps.length; is++) {
 
         // step along the path
-        var s0 = steps[i-1]
-        var s1 = steps[i]
+        var s0 = sliceSteps[is-1]
+        var s1 = sliceSteps[is]
         var p0 = path(s0)
         var p1 = path(s1)
 
@@ -141,6 +153,7 @@ function cap(pts, pt, flipped) {
     var cap = []
     for (var i = 0; i < pts.length; i++) {
         var ply = [pts[i], pts[(i+1)%pts.length], vtx(pt)]
+        //log('xxx ply', pts[i], pts[(i+1)%pts.length, pt)
         cap.push(poly(flipped? ply.reverse() : ply))
     }
     return cap
