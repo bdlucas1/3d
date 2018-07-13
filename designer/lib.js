@@ -48,8 +48,6 @@ function shell(options) {
     var rim0 = []
     var rim1 = []
 
-    log('xxx wedges', wedges)
-
     // compute variable length steps with goal to limit angle between chord and tangents
     function steps(f, n) {
         const eps = 1e-6
@@ -69,7 +67,7 @@ function shell(options) {
                 var tan1 = tangent(x1)
                 var chord = pt1.minus(pt0).unit()
                 if (angle(chord, tan0) > a || angle(chord, tan1) > a || x1 - x0 > maxStep) {
-                    xs.push(x0)
+                    xs.push(x1)
                     x0 = x1
                     pt0 = pt1
                     tan0 = tan1
@@ -81,7 +79,6 @@ function shell(options) {
         log(xs.length + ' xs')
         return xs
     }
-
 
     var sliceSteps = steps((x) => radius(x, 0), slices + 1)
 
@@ -153,7 +150,6 @@ function cap(pts, pt, flipped) {
     var cap = []
     for (var i = 0; i < pts.length; i++) {
         var ply = [pts[i], pts[(i+1)%pts.length], vtx(pt)]
-        //log('xxx ply', pts[i], pts[(i+1)%pts.length, pt)
         cap.push(poly(flipped? ply.reverse() : ply))
     }
     return cap
