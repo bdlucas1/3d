@@ -279,14 +279,14 @@ class Model {
 }
 
 // ui calls this to indicate change in parameters
-export function change() {
+export function change(immaterial: boolean = false) {
 
     if (Model.current) {
 
         const model = Model.current
 
         // if we're locked create a new variant
-        if (model.currentVariant.locked) {
+        if (model.currentVariant.locked && !immaterial) {
             let max = 0
             for (let name in model.variants) {
                 const f = name.split(' ')

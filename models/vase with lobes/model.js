@@ -1,4 +1,4 @@
-detail = ui.slider({name: 'detail', min: 10, max: 100, value: 50})
+detail = ui.slider({name: 'detail', min: 10, max: 200, value: 75, immaterial: true})
 thickness = ui.slider({name: 'thickness', min: 0.01, max: 0.1, step: 0.005, value: 0.03})
 
 // const f = (s) => lib.wave(0.0, 0.9, 0.25, .4)(s) - 0.1 * s
