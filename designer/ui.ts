@@ -71,6 +71,7 @@ type SliderOptions = {
     max: number,
     step?: number,
     value: number,
+    immaterial?: boolean,
 }
 
 class Slider implements Control<number> {
@@ -78,12 +79,14 @@ class Slider implements Control<number> {
     elt: HTMLElement
     inputElt: HTMLInputElement
     echoElt: HTMLElement
+    options: SliderOptions
 
     constructor(options: SliderOptions) {
 
         this.elt = $('<span>').addClass('ui-slider')[0]
         this.inputElt = <HTMLInputElement>$('<input>').appendTo(this.elt)[0]
         this.echoElt = $('<span>').appendTo(this.elt).addClass('ui-value')[0]
+        this.options = options
 
         $(this.inputElt)
             .attr('type', 'range')
@@ -99,7 +102,7 @@ class Slider implements Control<number> {
         $(this.inputElt)
             .on('change', () => {
                 log('change', this.value)
-                designer.change()
+                designer.change(this.options.immaterial || false)
             })
             .on('input', () => {
                 $(this.echoElt).text(this.inputElt.value)
