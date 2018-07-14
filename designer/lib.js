@@ -43,44 +43,73 @@ function shell(options) {
     var radius = options.radius || (() => 0.5);
     var twist = options.twist || 0
     var flipped = options.flipped || false
+    var sliceSteps = options.sliceSteps
+    var wedgeSteps = options.wedgeSteps
 
     var shell = [];
     var rim0 = []
     var rim1 = []
 
-    // compute variable length steps with goal to limit angle between chord and tangents
-    function steps(f, n) {
-        const eps = 1e-6
-        const tangent = (x) => vec2(eps, f(x+eps) - f(x)).unit()
-        const angle = (v0, v1) => Math.acos(v1.dot(v0)) // assumes unit vectors
-        var minStep = 1 / n / 10
-        var maxStep = 1.5 / n
-        var xs = []
-        var a = minStep
-        for (var i = 0; i < 5; i++) {
+    if (!sliceSteps || !wedgeSteps) {
+
+        function steps(f, n) {
+            const eps = 1e-6
+            const tangent = (x) => vec2(eps, f(x+eps/2) - f(x-eps/2)).unit()
+            const angle = (v0, v1) => Math.acos(v1.dot(v0)) // assumes unit vectors
+            var minStep = 1 / n / 100
+            var maxStep = 2 / n
             var x0 = 0
             var pt0 = vec2(x0, f(x0))
             var tan0 = tangent(x0)
-            xs = [x0]
+            var xs = [x0]
             for (var x1 = minStep; x1 <= 1; x1 += minStep) {
+                if (x1 >= 1 - minStep)
+                    x1 = 1
                 var pt1 = vec2(x1, f(x1))
                 var tan1 = tangent(x1)
                 var chord = pt1.minus(pt0).unit()
-                if (angle(chord, tan0) > a || angle(chord, tan1) > a || x1 - x0 > maxStep) {
+                if (angle(chord, tan0) > maxAngle || angle(chord, tan1) > maxAngle || x1 - x0 > maxStep || x1 == 1) {
                     xs.push(x1)
                     x0 = x1
                     pt0 = pt1
                     tan0 = tan1
                 }
             }
-            a *= xs.length / n
+            return xs //= xs.map((s) => s / xs[xs.length - 1])
         }
-        xs = xs.map((s) => s / xs[xs.length - 1])
-        log(xs.length + ' xs')
-        return xs
-    }
 
-    var sliceSteps = steps((x) => radius(x, 0), slices + 1)
+        const detail = slices // xxx
+
+        // profile in vertical (slice) dimension
+        const fSlice = (x) => radius(x, 0)
+        const nSlice = detail + 1
+
+        // compute dimensions: diameter, widest point, height
+        var diameter = 0
+        var widest
+        for (var s = 0; s <= 1; s += 1e-3) {
+            const d = fSlice(s)
+            if (d > diameter) {
+                diameter = d
+                widest = s
+            }
+        }
+        var height = path(1).y - path(0).y
+
+        // profile in horizontal (wedge) dimension
+        const fWedge = (a) => radius(widest, a)
+        const nWedge = Math.PI * diameter / height * detail + 1
+        log('height', height, 'diameter', diameter, 'widest', widest, 'nWedge', nWedge)
+        
+        // find an a that produces the expected number of facets, detail**2
+        var maxAngle = 1e-3 // xxx   / n/ 10 //minStep
+        for (var i = 0; i < 10; i++) {
+            sliceSteps = steps(fSlice, nSlice)
+            wedgeSteps = steps(fWedge, nWedge)
+            maxAngle *= (sliceSteps.length * wedgeSteps.length) / (detail**2)
+            log('sliceSteps.length', sliceSteps.length, 'wedgeSteps.length', wedgeSteps.length)
+        }
+    }
 
     for (var is = 1; is < sliceSteps.length; is++) {
 
@@ -95,10 +124,15 @@ function shell(options) {
         var axisX = vec3(isY, 1-isY, 0).cross(axisZ).unit();
         var axisY = axisX.cross(axisZ).unit();
         
-        for (var iw = 0; iw < wedges; iw++) {
+        //for (var iw = 0; iw < wedges; iw++) {
 
-            var w0 = (iw / wedges)
-            var w1 = ((iw+1) / wedges)
+            //var w0 = (iw / wedges)
+            //var w1 = ((iw+1) / wedges)
+
+        for (var iw = 1; iw < wedgeSteps.length; iw++) {
+
+            var w0 = wedgeSteps[iw-1]
+            var w1 = wedgeSteps[iw]
 
             var w00 = (s0) * twist + w0
             var w01 = (s0) * twist + w1
@@ -143,7 +177,7 @@ function shell(options) {
         }
     }
 
-    return {shell, rim0, rim1}
+    return {shell, rim0, rim1, sliceSteps, wedgeSteps}
 };
 
 function cap(pts, pt, flipped) {
@@ -228,7 +262,9 @@ function vase(options) {
     var inner = shell(override(options, {
         path: (s) => path(ss(s)),
         radius: (s, a) => radius(ss(s), a) - thickness(ss(s), a),
-        flipped: true
+        flipped: true,
+        sliceSteps: outer.sliceSteps,
+        wedgeSteps: outer.wedgeSteps
     }))
     var innerCap = cap(inner.rim0, path(ss(0)), true)
 
