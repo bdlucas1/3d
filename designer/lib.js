@@ -39,7 +39,7 @@ function shell(options) {
     options = options || {};
     var wedges = Math.floor(options.wedges) || 16;
     var slices = Math.floor(options.slices) || 16;
-    var path = options.path || line(vec3(0, -0.5, 0), vec3(0, 0.5, 0))
+    var path = options.path || line(vec3(0, 0, -0.5), vec3(0, 0, 0.5))
     var radius = options.radius || (() => 0.5);
     var twist = options.twist || 0
     var flipped = options.flipped || false
@@ -195,7 +195,7 @@ function rod(options) {
     options = options || {};
     var wedges = Math.floor(options.wedges) || 16;
     var slices = Math.floor(options.slices) || 16;
-    var path = options.path || line(vec3(0, -0.5, 0), vec3(0, 0.5, 0))
+    var path = options.path || line(vec3(0, 0, -0.5), vec3(0, 0, 0.5))
     var radius = options.radius || (() => 0.5);
     var twist = options.twist || 0
 
@@ -246,7 +246,7 @@ function vase(options) {
     options = options || {};
     var radius = options.radius || (() => 1);
     var thickness = options.thickness || (() => 0.1) // relative to diameter
-    var path = options.path || line(vec3(0, 0, -1), vec3(0, 0, 1))
+    var path = options.path || line(vec3(0, 0, 0), vec3(0, 0, 1))
     var base = options.base==undefined? 1 : options.base // relative to thickness at base
 
     // outer

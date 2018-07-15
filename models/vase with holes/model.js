@@ -13,7 +13,10 @@ const vmin = ui.slider({name: 'v min', min: -1.0, max: 1.0, step: 0.01, value: -
 const vmax = ui.slider({name: 'v max', min: -1.0, max: 1.0, step: 0.01, value: 0.55})
 const hole = ui.slider({name: 'hole diameter', min: 0, max: 0.5, step: 0.01, value: 0.2})
 
-ui.view({distance: 10, height: 2.5})
+const path = lib.line(lib.vec3(0, 0, 0), lib.vec3(0, 0, 1))
+const height = path(1).minus(path(0)).length()
+const center = path(1).plus(path(0)).times(0.5)
+ui.view({distance: 10, height: 2.5, center})
 
 punch = lib.empty()
 

@@ -55,7 +55,6 @@ class Model {
     name: string = 'N/A'
     controls = new ui.Controls()
 
-    variantsFn: string = 'N/A'
     currentVariant: Variant = emptyVariant('default', true)
     variants: {[name: string]: Variant} = {'default': this.currentVariant}
 
@@ -68,7 +67,6 @@ class Model {
         log('adding model', name)
         this.name = name
         this.modelFn = path.join(Model.dn, name, 'model.js')
-        this.variantsFn = path.join(Model.dn, name, 'variants.json')
 
         Model.models[name] = this
 
@@ -83,7 +81,6 @@ class Model {
             }
         })
 
-        // xxx watch for changes on variantsFn?
     }
 
     // make this model the active one
@@ -120,13 +117,16 @@ class Model {
                 this.construct()
             }
 
-            // read variants file
-            log('reading', this.variantsFn)
-            const variants = JSON.parse(fs.readFileSync(this.variantsFn).toString())
-            for (const name in variants) {
-                this.variants[name] = emptyVariant(name, true)
-                this.variants[name].values = variants[name]
-            }
+            // read variants dirs
+            const modelDn = path.join(Model.dn, this.name)
+            fs.readdirSync(modelDn).forEach(name => {
+                const variantFn = path.join(modelDn, name, 'variant.json')
+                if (fs.existsSync(variantFn)) {
+                    const variant = JSON.parse(fs.readFileSync(variantFn).toString())
+                    this.variants[name] = emptyVariant(name, true)
+                    this.variants[name].values = variant
+                }
+            })
 
         } catch (e) {
             log(e)
@@ -203,23 +203,21 @@ class Model {
         }
     }
 
-    // save variants to file
-    saveVariants() {
-        const variants: {[name: string]: ui.Values} = {}
-        for (let name in this.variants)
-            if (name != 'default' && !this.variants[name].deleted)
-                variants[name] = this.variants[name].values
-        const variantString = JSON.stringify(variants, null, 4)
-        fs.writeFileSync(this.variantsFn, variantString)
-    }
-
     // save variant dir
-    saveCurrentVariant() {
-        const variantDir = path.join(Model.dn, this.name, this.currentVariant.name)
-        fs.mkdirSync(variantDir)
-        const variantFn = path.join(variantDir, 'variant.json')
-        const variantString = JSON.stringify(this.currentVariant.values, null, 4)
-        fs.writeFileSync(variantFn, variantString)
+    saveVariant(variant: Variant) {
+        const variantDir = path.join(Model.dn, this.name, variant.name)
+        if (!variant.deleted) {
+            if (!fs.existsSync(variantDir))
+                fs.mkdirSync(variantDir)
+            const variantFn = path.join(variantDir, 'variant.json')
+            const variantString = JSON.stringify(variant.values, null, 4)
+            fs.writeFileSync(variantFn, variantString)
+        } else {
+            fs.readdirSync(variantDir).forEach(fn => {
+                fs.unlinkSync(path.join(variantDir, fn))
+            })
+            fs.rmdirSync(variantDir)
+        }
     }
 
 
@@ -268,6 +266,7 @@ class Model {
         this.currentVariant = variant
         if (variant.deleted) {
             variant.deleted = false
+            this.saveVariant(this.currentVariant)
             this.populateVariantSelector()
         }
         this.controls.loadValues(variant.values)
@@ -333,8 +332,7 @@ export function change(immaterial: boolean = false) {
         }
 
         // save variants to file
-        model.saveVariants()
-        model.saveCurrentVariant()
+        model.saveVariant(model.currentVariant)
     }
 }
 
@@ -372,7 +370,7 @@ class ExportModels extends Control {
         $(this.canvas).on('click', () => {
             const m = Model.current!
             for (const name in m.currentVariant.components!) {
-                const fn = path.join(Model.dn, m.name, [m.currentVariant.name, name].join(' - ') + '.stl')
+                const fn = path.join(Model.dn, m.name, m.currentVariant.name, name) + '.stl'
                 log('writing', fn)
                 const csg = m.currentVariant.components![name].scale(100)
                 const stl = io.stlSerializer.serialize(csg, {binary: false})
@@ -413,7 +411,7 @@ class DeleteVariant extends Control {
         $(this.canvas).on('click', (e) => {
             const model = Model.current!
             model.currentVariant.deleted = true
-            model.saveCurrentVariant() // deletes dirs
+            model.saveVariant(model.currentVariant) // deletes dirs
             model.populateVariantSelector()
             model.setVariant('default')
         })

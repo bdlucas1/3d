@@ -1,4 +1,4 @@
-ui.view({distance: 5, height: 4.5})
+ui.view({distance: 5, height: 4.5, center: lib.vec3(0, 0, 0)})
 
 cube = CSG.cube({radius: 1.1})
 sphere = CSG.sphere({radius: 1.35})
