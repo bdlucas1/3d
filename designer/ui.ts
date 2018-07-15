@@ -4,12 +4,14 @@ import * as designer from '../designer/designer'
 import * as spline from 'commons-math-interpolation'
 const catrom = require('cat-rom-spline')
 const numeric = require('numeric')
+const lib = require('./lib')
 
 const log = remote.getGlobal('console').log
 
 export type ViewOptions = {
     distance: number,
-    height: number
+    height: number,
+    center: any, // xxx csg vector
 }
 
 export type Values = {[name: string]: number | boolean | CurveValue}
@@ -26,7 +28,8 @@ export class Controls {
 
     static defaultViewOptions = {
         distance: 5,
-        height: 2
+        height: 2,
+        center: lib.vec3(0, 0, 0)
     }
     
     viewOptions = Controls.defaultViewOptions

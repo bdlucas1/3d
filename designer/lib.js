@@ -7,7 +7,7 @@ var log = require("electron").remote.getGlobal('console').log;
 
 var CSG = require('@jscad/CSG').CSG
 
-const vec3 = (...args) => (args instanceof CSG.Vector3D? args : new CSG.Vector3D(...args))
+const vec3 = exports.vec3 = (...args) => (args instanceof CSG.Vector3D? args : new CSG.Vector3D(...args))
 const vec2 = (...args) => (args instanceof CSG.Vector2D? args : new CSG.Vector3D(...args))
 const vtx = (...args) => new CSG.Vertex(...args)
 const poly = (...args) => new CSG.Polygon(...args)
@@ -85,21 +85,21 @@ function shell(options) {
         const nSlice = detail + 1
 
         // compute dimensions: diameter, widest point, height
-        var diameter = 0
-        var widest
+        var maxRadius = 0
+        var maxRadiusAt
         for (var s = 0; s <= 1; s += 1e-3) {
-            const d = fSlice(s)
-            if (d > diameter) {
-                diameter = d
-                widest = s
+            const r = fSlice(s)
+            if (r > maxRadius) {
+                maxRadius = r
+                maxRadiusAt = s
             }
         }
-        var height = path(1).y - path(0).y
+        var height = path(1).minus(path(0)).length()
 
         // profile in horizontal (wedge) dimension
-        const fWedge = (a) => radius(widest, a)
-        const nWedge = Math.PI * diameter / height * detail + 1
-        log('height', height, 'diameter', diameter, 'widest', widest, 'nWedge', nWedge)
+        const fWedge = (a) => radius(maxRadiusAt, a)
+        const nWedge = 2 * Math.PI * maxRadius / height * detail + 1
+        log('detail', detail, 'height', height, 'maxRadius', maxRadius, 'maxRadiusAt', maxRadiusAt, 'nWedge', nWedge)
         
         // find an a that produces the expected number of facets, detail**2
         var maxAngle = 1e-3 // xxx   / n/ 10 //minStep
@@ -246,7 +246,7 @@ function vase(options) {
     options = options || {};
     var radius = options.radius || (() => 1);
     var thickness = options.thickness || (() => 0.1) // relative to diameter
-    var path = options.path || line(vec3(0, -1, 0), vec3(0, 1, 0))
+    var path = options.path || line(vec3(0, 0, -1), vec3(0, 0, 1))
     var base = options.base==undefined? 1 : options.base // relative to thickness at base
 
     // outer
@@ -256,7 +256,8 @@ function vase(options) {
     var outerCap = cap(outer.rim0, path(0), false)
 
     // inner
-    var height = path(1).y - path(0).y
+    var height = path(1).minus(path(0)).length()
+    log('xxx', path(1).minus(path(0)), path(1).minus(path(0)).length())
     var b = thickness(0, 0) * 2 * radius(0, 0)/ height // xxx min thickness over all a
     const ss = (s) => b + (1-b) * s
     var inner = shell(override(options, {

@@ -8,3 +8,5 @@ compare
 designer/designer.js
 designer/main.js
 designer/ui.js
+*.prusa
+*.gcode

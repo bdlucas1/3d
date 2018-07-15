@@ -213,6 +213,16 @@ class Model {
         fs.writeFileSync(this.variantsFn, variantString)
     }
 
+    // save variant dir
+    saveCurrentVariant() {
+        const variantDir = path.join(Model.dn, this.name, this.currentVariant.name)
+        fs.mkdirSync(variantDir)
+        const variantFn = path.join(variantDir, 'variant.json')
+        const variantString = JSON.stringify(this.currentVariant.values, null, 4)
+        fs.writeFileSync(variantFn, variantString)
+    }
+
+
     // show our components and ui
     show() {
 
@@ -274,7 +284,7 @@ class Model {
         log('setComponent', this.name, name)
         this.currentVariant.currentComponent = name
         Model.csg = this.currentVariant.components![name]
-        Model.viewer.setCsg(Model.csg.rotateX(90))
+        Model.viewer.setCsg(Model.csg.translate(this.controls.viewOptions.center.times(-1)))
     }
 }
 
@@ -324,6 +334,7 @@ export function change(immaterial: boolean = false) {
 
         // save variants to file
         model.saveVariants()
+        model.saveCurrentVariant()
     }
 }
 
@@ -363,7 +374,8 @@ class ExportModels extends Control {
             for (const name in m.currentVariant.components!) {
                 const fn = path.join(Model.dn, m.name, [m.currentVariant.name, name].join(' - ') + '.stl')
                 log('writing', fn)
-                const stl = io.stlSerializer.serialize(m.currentVariant.components![name], {binary: false})
+                const csg = m.currentVariant.components![name].scale(100)
+                const stl = io.stlSerializer.serialize(csg, {binary: false})
                 fs.writeFileSync(fn, stl[0].toString())
             }
         })
@@ -401,9 +413,9 @@ class DeleteVariant extends Control {
         $(this.canvas).on('click', (e) => {
             const model = Model.current!
             model.currentVariant.deleted = true
+            model.saveCurrentVariant() // deletes dirs
             model.populateVariantSelector()
             model.setVariant('default')
-            model.saveVariants()
         })
     }
 }

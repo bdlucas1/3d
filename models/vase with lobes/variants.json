@@ -1,8 +1,8 @@
 {
     "variant 1": {
         "detail": 75,
-        "thickness": 0.03,
-        "diameter": 1.3,
+        "thickness": 0.015,
+        "diameter": 0.65,
         "profile": {
             "kind": "cubic",
             "pts": [
@@ -29,7 +29,7 @@
             ]
         },
         "n lobes": 3,
-        "lobe height": 0.15,
+        "lobe height": 0.075,
         "lobe h profile": {
             "kind": "poly",
             "pts": [
@@ -69,8 +69,8 @@
     },
     "variant 3": {
         "detail": 75,
-        "thickness": 0.03,
-        "diameter": 1.3,
+        "thickness": 0.015,
+        "diameter": 0.65,
         "profile": {
             "kind": "cubic",
             "pts": [
@@ -97,7 +97,7 @@
             ]
         },
         "n lobes": 3,
-        "lobe height": 0.132,
+        "lobe height": 0.067,
         "lobe h profile": {
             "kind": "1 wave",
             "pts": [
@@ -137,8 +137,8 @@
     },
     "variant 6": {
         "detail": 100,
-        "thickness": 0.03,
-        "diameter": 0.96,
+        "thickness": 0.015,
+        "diameter": 0.48,
         "profile": {
             "kind": "cubic",
             "pts": [
@@ -161,7 +161,7 @@
             ]
         },
         "n lobes": 16,
-        "lobe height": 0.055,
+        "lobe height": 0.027,
         "lobe h profile": {
             "kind": "cat-rom",
             "pts": [
@@ -201,8 +201,8 @@
     },
     "variant 7": {
         "detail": 101,
-        "thickness": 0.03,
-        "diameter": 0.96,
+        "thickness": 0.015,
+        "diameter": 0.48,
         "profile": {
             "kind": "cubic",
             "pts": [
@@ -225,7 +225,7 @@
             ]
         },
         "n lobes": 16,
-        "lobe height": 0.055,
+        "lobe height": 0.027,
         "lobe h profile": {
             "kind": "cat-rom",
             "pts": [
@@ -265,8 +265,8 @@
     },
     "variant 10": {
         "detail": 75,
-        "thickness": 0.03,
-        "diameter": 1.09,
+        "thickness": 0.015,
+        "diameter": 0.54,
         "profile": {
             "kind": "cubic",
             "pts": [
@@ -293,7 +293,7 @@
             ]
         },
         "n lobes": 3,
-        "lobe height": 0.032,
+        "lobe height": 0.016,
         "lobe h profile": {
             "kind": "poly",
             "pts": [
@@ -341,8 +341,8 @@
     },
     "variant 11": {
         "detail": 100,
-        "thickness": 0.03,
-        "diameter": 1.19,
+        "thickness": 0.015,
+        "diameter": 0.595,
         "profile": {
             "kind": "cubic",
             "pts": [
@@ -369,7 +369,7 @@
             ]
         },
         "n lobes": 1,
-        "lobe height": 0.136,
+        "lobe height": 0.068,
         "lobe h profile": {
             "kind": "poly",
             "pts": [
@@ -417,8 +417,8 @@
     },
     "variant 12": {
         "detail": 75,
-        "thickness": 0.03,
-        "diameter": 1.22,
+        "thickness": 0.015,
+        "diameter": 0.61,
         "profile": {
             "kind": "cubic",
             "pts": [
@@ -445,7 +445,7 @@
             ]
         },
         "n lobes": 1,
-        "lobe height": 0.2,
+        "lobe height": 0.1,
         "lobe h profile": {
             "kind": "poly",
             "pts": [
@@ -493,8 +493,8 @@
     },
     "variant 13": {
         "detail": 79,
-        "thickness": 0.03,
-        "diameter": 0.96,
+        "thickness": 0.015,
+        "diameter": 0.48,
         "profile": {
             "kind": "cubic",
             "pts": [
@@ -517,7 +517,7 @@
             ]
         },
         "n lobes": 16,
-        "lobe height": 0.055,
+        "lobe height": 0.0275,
         "lobe h profile": {
             "kind": "cubic",
             "pts": [
@@ -561,8 +561,8 @@
     },
     "variant 14": {
         "detail": 75,
-        "thickness": 0.03,
-        "diameter": 0.96,
+        "thickness": 0.015,
+        "diameter": 0.48,
         "profile": {
             "kind": "cubic",
             "pts": [
@@ -585,7 +585,7 @@
             ]
         },
         "n lobes": 16,
-        "lobe height": 0.055,
+        "lobe height": 0.0275,
         "lobe h profile": {
             "kind": "cat-rom",
             "pts": [
@@ -625,8 +625,8 @@
     },
     "variant 15": {
         "detail": 100,
-        "thickness": 0.03,
-        "diameter": 0.96,
+        "thickness": 0.015,
+        "diameter": 0.48,
         "profile": {
             "kind": "cubic",
             "pts": [
@@ -649,7 +649,7 @@
             ]
         },
         "n lobes": 40,
-        "lobe height": 0.024,
+        "lobe height": 0.012,
         "lobe h profile": {
             "kind": "cubic",
             "pts": [
@@ -693,8 +693,8 @@
     },
     "variant 16": {
         "detail": 50,
-        "thickness": 0.03,
-        "diameter": 2,
+        "thickness": 0.015,
+        "diameter": 1,
         "profile": {
             "kind": "cubic",
             "pts": [
@@ -765,8 +765,8 @@
     },
     "variant 17": {
         "detail": 50,
-        "thickness": 0.03,
-        "diameter": 2,
+        "thickness": 0.015,
+        "diameter": 1,
         "profile": {
             "kind": "akima",
             "pts": [
@@ -841,8 +841,8 @@
     },
     "variant 18": {
         "detail": 100,
-        "thickness": 0.04,
-        "diameter": 2,
+        "thickness": 0.02,
+        "diameter": 1,
         "profile": {
             "kind": "akima",
             "pts": [
@@ -869,7 +869,7 @@
             ]
         },
         "n lobes": 24,
-        "lobe height": 0.059,
+        "lobe height": 0.030,
         "lobe h profile": {
             "kind": "cat-rom",
             "pts": [
@@ -921,8 +921,8 @@
     },
     "variant 19": {
         "detail": 151,
-        "thickness": 0.04,
-        "diameter": 2,
+        "thickness": 0.02,
+        "diameter": 1,
         "profile": {
             "kind": "akima",
             "pts": [
@@ -949,7 +949,7 @@
             ]
         },
         "n lobes": 30,
-        "lobe height": 0.059,
+        "lobe height": 0.030,
         "lobe h profile": {
             "kind": "cat-rom",
             "pts": [
