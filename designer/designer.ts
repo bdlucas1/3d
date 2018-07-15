@@ -305,7 +305,8 @@ export function change(immaterial: boolean = false) {
                         max = v
                 }
             }
-            const newName = 'variant ' + (max + 1)
+            const num = '000' + (max + 1)
+            const newName = 'variant ' + num.substring(num.length - 3, num.length)
             model.currentVariant = emptyVariant(newName, false)
             model.variants[newName] = model.currentVariant
         }
@@ -581,7 +582,7 @@ $(window).on('load', () => {
     log('reading models')
     let newestMtime = 0
     let newestModel: string
-    fs.readdirSync(Model.dn).forEach(fn => {
+    fs.readdirSync(Model.dn).sort().forEach(fn => {
         $('<option>')
             .attr('value', fn)
             .text(fn)
