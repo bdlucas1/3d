@@ -37,8 +37,7 @@ exports.empty = empty
 function shell(options) {
 
     options = options || {};
-    var wedges = Math.floor(options.wedges) || 16;
-    var slices = Math.floor(options.slices) || 16;
+    var detail = options.detail || 100
     var path = options.path || line(vec3(0, 0, -0.5), vec3(0, 0, 0.5))
     var radius = options.radius || (() => 0.5);
     var twist = options.twist || 0
@@ -77,8 +76,6 @@ function shell(options) {
             }
             return xs //= xs.map((s) => s / xs[xs.length - 1])
         }
-
-        const detail = slices // xxx
 
         // profile in vertical (slice) dimension
         const fSlice = (x) => radius(x, 0)
@@ -257,7 +254,6 @@ function vase(options) {
 
     // inner
     var height = path(1).minus(path(0)).length()
-    log('xxx', path(1).minus(path(0)), path(1).minus(path(0)).length())
     var b = thickness(0, 0) * 2 * radius(0, 0)/ height // xxx min thickness over all a
     const ss = (s) => b + (1-b) * s
     var inner = shell(override(options, {

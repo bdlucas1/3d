@@ -21,8 +21,7 @@ center = path(1).plus(path(0)).times(0.5)
 ui.view({distance: 10, height: height * 1.25, center})
 
 vase = lib.vase({
-    slices: detail,
-    wedges: Math.max(Math.ceil(detail / nLobes) * nLobes, Math.ceil(Math.sqrt(detail)) * nLobes),
+    detail,
     thickness: (s, a) => thickness + lobeProfile(s, a) * lobeHeight * (1 - interior),
     radius: (s, a) => profile(s) * (diameter/2 - lobeHeight) + lobeProfile(s, a) * lobeHeight,
     twist,

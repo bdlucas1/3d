@@ -9,8 +9,7 @@ profile = ui.curve({name: 'profile', kind: 'cubic', pts: pts, scale: diameter / 
 ui.view({distance: 10, height: 1.5, center: lib.vec3(0, 0, 0.5)})
 
 vase = lib.vase({
-    slices: detail,
-    wedges: detail,
+    detail,
     thickness: () => thickness,
     radius: profile,
 })

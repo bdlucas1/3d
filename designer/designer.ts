@@ -3,11 +3,12 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import * as ui from './ui'
+const lib = require('./lib.js')
 
 import * as commandLineArgs from 'command-line-args'
 
 import {remote} from 'electron'
-const log = remote.getGlobal('console').log
+export const log = remote.getGlobal('console').log
 
 const CSG = require('@jscad/CSG').CSG
 const Viewer = require('@jscad/openjscad/src/ui/viewer/jscad-viewer')
@@ -153,7 +154,12 @@ class Model {
                 const libNames = ['ui', 'lib']
                 const loadedLibs = libNames.map((name) => require('./' + name + '.js'))
                 this.controls.activate() // assert already active?
-                this.currentVariant.components = new Function('log', 'CSG', ...libNames, this.code)(log, CSG, ...loadedLibs);
+                //const code = 'return (' + this.code + ')'
+                //this.currentVariant.components = new Function('log', 'CSG', ...libNames, code)(log, CSG, ...loadedLibs);
+                this.currentVariant.components = ((log, CSG, lib, ui) => eval('{' + this.code + '}'))(log, CSG, lib, ui)
+                //delete require.cache[require.resolve('./b.js')]
+                //this.currentVariant.components = require(path.join('..', 'models', this.name, 'model.js')).components
+                log('xxx components', this.currentVariant.components)
                 const endCPU = os.cpus().reduce((a, b) => a + b.times.user, 0)
 
                 // reset hasChanged flag
@@ -213,10 +219,17 @@ class Model {
             const variantString = JSON.stringify(variant.values, null, 4)
             fs.writeFileSync(variantFn, variantString)
         } else {
-            fs.readdirSync(variantDir).forEach(fn => {
-                fs.unlinkSync(path.join(variantDir, fn))
-            })
-            fs.rmdirSync(variantDir)
+            const rmdirRecursive = (dn: string) => {
+                fs.readdirSync(dn).forEach(fn => {
+                    fn = path.join(dn, fn)
+                    if (fs.statSync(fn).isDirectory())
+                        rmdirRecursive(fn)
+                    else
+                        fs.unlinkSync(fn)
+                })
+                fs.rmdirSync(dn)
+            }
+            rmdirRecursive(variantDir)
         }
     }
 

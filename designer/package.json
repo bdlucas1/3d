@@ -4,8 +4,9 @@
   "description": "Design 3d models using CSG",
   "main": "main.js",
   "scripts": {
-    "start": "./node_modules/typescript/bin/tsc --pretty false --target ES5 --strict *.ts && electron --js-flags='--expose-gc' .",
-    "test": "./node_modules/typescript/bin/tsc --pretty false --target ES5 --strict *.ts && electron --js-flags='--expose-gc' . --dbg"
+    "build": "tsc",
+    "start": "electron --js-flags='--expose-gc' .",
+    "test": "NODE_PATH=/Users/bdlucas1/Projects/3d/designer electron --js-flags='--expose-gc' . --dbg"
   },
   "repository": "https://github.com/bdlucas1/3d",
   "keywords": [],
