@@ -1,6 +1,4 @@
-//const log = require('../../designer/designer.js').log
-const CSG = require('@jscad/csg').CSG
-const log = require('./designer.js').log
+import {log, CSG} from '../../designer/designer'
 
 interface Vec3 {
     x: number

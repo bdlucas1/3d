@@ -1,3 +1,5 @@
+const {log, ui, lib, CSG} = require('../../designer/designer.js')
+
 const detail = ui.slider({name: 'detail', min: 12, max: 50, value: 20})
 const thickness = ui.slider({name: 'thickness', min: 0.01, max: 0.1, step: 0.005, value: 0.02})
 
@@ -54,7 +56,7 @@ vase = lib.vase({
 vase_with_holes = vase.subtract(punch)
 holes = vase.intersect(punch)
 
-return {
+exports.components = {
     'vase with holes': vase_with_holes,
     holes,
     punch,

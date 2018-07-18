@@ -1,10 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-//const log = require('../../designer/designer.js').log
-var CSG = require('@jscad/csg').CSG;
-var log = require('./designer.js').log;
+var designer_1 = require("../../designer/designer");
 function vec3(x, y, z) {
-    return new CSG.Vector3D(x, y, z);
+    return new designer_1.CSG.Vector3D(x, y, z);
 }
 function poly() {
     var args = [];
@@ -12,10 +10,10 @@ function poly() {
         args[_i] = arguments[_i];
     }
     var _a;
-    return new ((_a = CSG.Polygon).bind.apply(_a, [void 0].concat(args)))();
+    return new ((_a = designer_1.CSG.Polygon).bind.apply(_a, [void 0].concat(args)))();
 }
 function vtx(v) {
-    return new CSG.Vertex(v);
+    return new designer_1.CSG.Vertex(v);
 }
 //
 //
@@ -53,9 +51,9 @@ var Sphere = /** @class */ (function () {
         this.tris.push(tri(p4, p3, p2));
     }
     Sphere.prototype.toCSG = function () {
-        log('toCSG()');
+        designer_1.log('toCSG()');
         var polys = this.tris.map(function (t) { return t.toPoly(); });
-        return CSG.fromPolygons(polys);
+        return designer_1.CSG.fromPolygons(polys);
     };
     return Sphere;
 }());

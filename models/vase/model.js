@@ -1,3 +1,5 @@
+const {ui, lib, CSG} = require('../../designer/designer.js')
+
 detail = ui.slider({name: 'detail', min: 10, max: 100, value: 50})
 thickness = ui.slider({name: 'thickness', min: 0.005, max: 0.1, step: 0.005, value: 0.01})
 
@@ -14,5 +16,5 @@ vase = lib.vase({
     radius: profile,
 })
 
-return {vase}
+exports.components = {vase}
 

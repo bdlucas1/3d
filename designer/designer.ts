@@ -8,11 +8,14 @@ const lib = require('./lib.js')
 import * as commandLineArgs from 'command-line-args'
 
 import {remote} from 'electron'
-export const log = remote.getGlobal('console').log
+const log = remote.getGlobal('console').log
 
 const CSG = require('@jscad/CSG').CSG
 const Viewer = require('@jscad/openjscad/src/ui/viewer/jscad-viewer')
 const io = require('@jscad/io')
+
+// convenience for models
+export {ui, lib, CSG, log}
 
 function now() {
     return new Date().getTime()
@@ -154,12 +157,9 @@ class Model {
                 const libNames = ['ui', 'lib']
                 const loadedLibs = libNames.map((name) => require('./' + name + '.js'))
                 this.controls.activate() // assert already active?
-                //const code = 'return (' + this.code + ')'
-                //this.currentVariant.components = new Function('log', 'CSG', ...libNames, code)(log, CSG, ...loadedLibs);
-                this.currentVariant.components = ((log, CSG, lib, ui) => eval('{' + this.code + '}'))(log, CSG, lib, ui)
-                //delete require.cache[require.resolve('./b.js')]
-                //this.currentVariant.components = require(path.join('..', 'models', this.name, 'model.js')).components
-                log('xxx components', this.currentVariant.components)
+                const module = path.join('..', 'models', this.name, 'model.js')
+                delete require.cache[require.resolve(module)]
+                this.currentVariant.components = require(module).components
                 const endCPU = os.cpus().reduce((a, b) => a + b.times.user, 0)
 
                 // reset hasChanged flag
