@@ -10,3 +10,4 @@ designer/main.js
 designer/ui.js
 *.prusa
 *.gcode
+models/sphere/*.js

@@ -594,7 +594,7 @@ $(window).on('load', () => {
     // read model directory, populate menu
     log('reading models')
     let newestMtime = 0
-    let newestModel: string
+    let newestModel: string = ''
     fs.readdirSync(Model.dn).sort().forEach(fn => {
         $('<option>')
             .attr('value', fn)
