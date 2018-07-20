@@ -154,8 +154,6 @@ class Model {
 
                 // execute the code
                 log('starting construction')
-                const libNames = ['ui', 'lib']
-                const loadedLibs = libNames.map((name) => require('./' + name + '.js'))
                 this.controls.activate() // assert already active?
                 const module = path.join('..', 'models', this.name, 'model.js')
                 delete require.cache[require.resolve(module)]
