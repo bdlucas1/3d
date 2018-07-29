@@ -5,9 +5,8 @@ node_modules
 *.diff
 *.stl
 compare
-designer/designer.js
-designer/main.js
-designer/ui.js
 *.prusa
 *.gcode
+designer/*.js
 models/sphere/*.js
+models/wine charms/*.js
