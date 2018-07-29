@@ -1,5 +1,5 @@
 import {log, CSG, ui} from '../../designer/designer'
-import {Vec3, vec3, shell, line, shoulders, circle} from '../../designer/lib'
+import {Vec3, vec3, shell, line, shoulders, circle, time} from '../../designer/lib'
 
 const detail = ui.slider({name: 'detail', min: 20, max: 200, value: 50, immaterial: true})
 
@@ -38,11 +38,16 @@ const disk = shell({
 }).translate(vec3(0, - diskDiameter / 2 + ringTubeRadius / 2, 0))
 
 //
+// put it together
 //
-//
+
+var charm: CSG
+time('union', () => {
+    charm = ring.union(disk)
+})
 
 const size = ringHole + 2 * ringTube
 ui.view({distance: 10 * size, height: 2 * size, center: vec3(0, 0, 0)})
 
-export const components = {charm: ring.union(disk), ring, disk}
+export const components = {charm, ring, disk}
 

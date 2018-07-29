@@ -1,5 +1,12 @@
 import {log, CSG, ui} from './designer'
 
+export function time(name: string, f: () => void) {
+    const t0 = new Date().getTime()
+    f()
+    const t = new Date().getTime() - t0
+    log('time:', name, t, 'ms')
+}
+
 export interface Vec3 {
     x: number
     y: number
@@ -138,7 +145,7 @@ function _shell(options: any) {
 
     if (!sliceSteps || !wedgeSteps) {
 
-        const steps = (f: (x: number) => Vec3, n: number) => {
+        const steps = (f: (x: number) => Vec3, n: number, maxAngle: number) => {
             const eps = 1e-6
             const tangent = (x: number) => f(x+eps/2).minus(f(x-eps/2)).unit()
             const angle = (v0: Vec3, v1: Vec3) => Math.acos(v1.dot(v0)) // unit vectors
@@ -201,65 +208,71 @@ function _shell(options: any) {
         }
         
         // find an a that produces the expected number of facets, detail**2
-        var maxAngle = 1e-3 // xxx   / n/ 10 //minStep
-        for (var i = 0; i < 10; i++) {
-            sliceSteps = steps(fSlice, nSlice)
-            wedgeSteps = steps(fWedge, nWedge)
-            maxAngle *= (sliceSteps.length * wedgeSteps.length) / (detail**2)
-            log('sliceSteps.length', sliceSteps.length, 'wedgeSteps.length', wedgeSteps.length)
-        }
+        time('steps', () => {
+            var maxAngle = 1e-3 // xxx   / n/ 10 //minStep
+            for (var i = 0; i < 5; i++) {
+                sliceSteps = steps(fSlice, nSlice, maxAngle)
+                wedgeSteps = steps(fWedge, nWedge, maxAngle)
+                maxAngle *= (sliceSteps.length * wedgeSteps.length) / (detail**2)
+                log('sliceSteps.length', sliceSteps.length, 'wedgeSteps.length', wedgeSteps.length)
+            }
+        })
     }
 
-    for (var is = 1; is < sliceSteps.length; is++) {
+    time("construct", () => {
 
-        // step along the path
-        const s0 = sliceSteps[is-1]
-        const s1 = sliceSteps[is]
-        const p0 = path(s0)
-        const p1 = path(s1)
+        for (var is = 1; is < sliceSteps.length; is++) {
 
-        const frame0 = frame(s0)
-        const frame1 = frame(s1)
+            // step along the path
+            const s0 = sliceSteps[is-1]
+            const s1 = sliceSteps[is]
+            const p0 = path(s0)
+            const p1 = path(s1)
 
-        for (var iw = 1; iw < wedgeSteps.length; iw++) {
+            const frame0 = frame(s0)
+            const frame1 = frame(s1)
 
-            var w0 = wedgeSteps[iw-1]
-            var w1 = wedgeSteps[iw]
+            for (var iw = 1; iw < wedgeSteps.length; iw++) {
 
-            var w00 = (s0) * twist + w0
-            var w01 = (s0) * twist + w1
-            var w10 = (s1) * twist + w0
-            var w11 = (s1) * twist + w1
+                var w0 = wedgeSteps[iw-1]
+                var w1 = wedgeSteps[iw]
 
-            var r00 = radius(s0, w0)
-            var r01 = radius(s0, w1)
-            var r10 = radius(s1, w0)
-            var r11 = radius(s1, w1)
+                var w00 = (s0) * twist + w0
+                var w01 = (s0) * twist + w1
+                var w10 = (s1) * twist + w0
+                var w11 = (s1) * twist + w1
 
-            //  v00 v01
-            //  v10 v11
-            var v00 = vtx(point(p0, r00, w00, frame0))
-            var v01 = vtx(point(p0, r01, w01, frame0))
-            var v10 = vtx(point(p1, r10, w10, frame1))
-            var v11 = vtx(point(p1, r11, w11, frame1))
+                var r00 = radius(s0, w0)
+                var r01 = radius(s0, w1)
+                var r10 = radius(s1, w0)
+                var r11 = radius(s1, w1)
 
-            const add = (...args: Poly[]) => {
-                shell.push(flipped? poly(args.reverse()) : poly(args))
+                //  v00 v01
+                //  v10 v11
+                var v00 = vtx(point(p0, r00, w00, frame0))
+                var v01 = vtx(point(p0, r01, w01, frame0))
+                var v10 = vtx(point(p1, r10, w10, frame1))
+                var v11 = vtx(point(p1, r11, w11, frame1))
+
+                const add = (...args: Poly[]) => {
+                    shell.push(flipped? poly(args.reverse()) : poly(args))
+                }
+
+                if (s0 == 0)
+                    rim0.push(v00)
+                if (twist < 0) {
+                    if (r10 != 0 || r11 != 0) add(v00, v10, v11)
+                    if (r01 != 0 || r00 != 0) add(v11, v01, v00)
+                } else {
+                    if (r00 != 0 || r01 != 0) add(v01, v00, v10)
+                    if (r11 != 0 || r10 != 0) add(v10, v11, v01)
+                }
+                if (s1 == 1)
+                    rim1.push(v10)
             }
-
-            if (s0 == 0)
-                rim0.push(v00)
-            if (twist < 0) {
-                if (r10 != 0 || r11 != 0) add(v00, v10, v11)
-                if (r01 != 0 || r00 != 0) add(v11, v01, v00)
-            } else {
-                if (r00 != 0 || r01 != 0) add(v01, v00, v10)
-                if (r11 != 0 || r10 != 0) add(v10, v11, v01)
-            }
-            if (s1 == 1)
-                rim1.push(v10)
         }
-    }
+
+    }) // time
 
     return {shell, rim0, rim1, sliceSteps, wedgeSteps}
 };
