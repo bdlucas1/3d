@@ -1,10 +1,11 @@
 import * as $ from 'jquery'
 import {remote} from 'electron'
-import * as designer from '../designer/designer'
 import * as spline from 'commons-math-interpolation'
 const catrom = require('cat-rom-spline')
 const numeric = require('numeric')
-const lib = require('./lib')
+
+import * as designer from '../designer/designer'
+import * as lib from '../designer/lib'
 
 const log = remote.getGlobal('console').log
 
@@ -125,7 +126,7 @@ class Slider implements Control<number> {
 export function slider(options: SliderOptions) {
 
     if (!Controls.current)
-        return
+        return 0
 
     // remember default controls
     Controls.current.defaultValues[options.name] = options.value

@@ -2,9 +2,6 @@ import * as $ from 'jquery'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import * as ui from './ui'
-const lib = require('./lib.js')
-
 import * as commandLineArgs from 'command-line-args'
 
 import {remote} from 'electron'
@@ -13,6 +10,9 @@ const log = remote.getGlobal('console').log
 const CSG = require('@jscad/CSG').CSG
 const Viewer = require('@jscad/openjscad/src/ui/viewer/jscad-viewer')
 const io = require('@jscad/io')
+
+import * as ui from './ui'
+import * as lib from './lib'
 
 // convenience for models
 export {ui, lib, CSG, log}

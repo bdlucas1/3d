@@ -1,40 +1,99 @@
-// xxx can we use typescript here?
+import {log, CSG, ui} from './designer'
 
-"use strict";
-exports.__esModule = true;
+export interface Vec3 {
+    x: number
+    y: number
+    z: number
+    plus(q: Vec3): Vec3
+    minus(q: Vec3): Vec3
+    times(m: number): Vec3
+    dot(q: Vec3): number
+    cross(q: Vec3): Vec3
+    unit(): Vec3
+    length(): number
+}
 
-var log = require("electron").remote.getGlobal('console').log;
+export function vec3(x: number, y: number, z: number) {
+    return new CSG.Vector3D(x, y, z)
+}
 
-var CSG = require('@jscad/CSG').CSG
+export interface Vec2 {
+    x: number
+    y: number
+    z: number
+    plus(q: Vec2): Vec2
+    minus(q: Vec2): Vec2
+    times(m: number): Vec2
+    dot(q: Vec2): number
+    cross(q: Vec2): Vec2
+    unit(): Vec2
+    length(): number
+}
 
-const vec3 = exports.vec3 = (...args) => (args instanceof CSG.Vector3D? args : new CSG.Vector3D(...args))
-const vec2 = (...args) => (args instanceof CSG.Vector2D? args : new CSG.Vector3D(...args))
-const vtx = (...args) => new CSG.Vertex(...args)
-const poly = (...args) => new CSG.Polygon(...args)
+export function vec2(...args: any[]) {
+    return new CSG.Vector2D(...args)
+}
 
-function override(oldOptions, newOptions) {
+export function eq(p: Vec3, q: Vec3) {
+    return p.x==q.x && p.y==q.y && p.z==q.z
+}
+
+export interface Poly {
+}
+
+export function poly(...args: Vtx[]): Poly {
+    return new CSG.Polygon(...args)
+}
+
+export interface Vtx {
+}
+
+export function vtx(v: Vec3): Vtx {
+    return new CSG.Vertex(v)
+}
+
+//
+//
+//
+
+function override(oldOptions: {}, newOptions: {}) {
     return Object.assign({}, oldOptions, newOptions)
 }
 
-function line(start, end) {
-    return (s) => vec3(start).times(1-s).plus(vec3(end).times(s))
+export function line(start: Vec3, end: Vec3) {
+    return (s: number) => start.times(1-s).plus(end.times(s))
 }
-exports.line = line
 
-function wave(start, end, min, max) {
-    return (s) => {
+function wave(start: number, end: number, min: number, max: number) {
+    return (s: number) => {
         s = (1-s) * start + s * end
         return (Math.sin(s * 2 * Math.PI) + 1) * (max - min) + min
     }
 }
-exports.wave = wave
 
-function empty() {
+export function shoulders(s0: number, s1: number, r: number) {
+    return (s: number) => {
+        let v = 1
+        if (s < s0)
+            v = Math.sqrt(1 - (1 - s / s0) ** 2)
+        else if (1 - s < s1)
+            v = Math.sqrt(1 - (1 - (1 - s) / s1) ** 2)
+        return r * v
+    }
+}
+
+export function circle(a0: number, a1: number, r: number) {
+    return (s: number) => {
+        const a = (a0 + s * (a1 - a0)) * 2 * Math.PI
+        return vec3(r * Math.sin(a), r * Math.cos(a), 0)
+    }
+}
+
+export function empty() {
     return new CSG()
 }
-exports.empty = empty
 
-function shell(options) {
+function _shell(options: any) {
 
     options = options || {};
     var detail = options.detail || 100
@@ -45,16 +104,16 @@ function shell(options) {
     var sliceSteps = options.sliceSteps
     var wedgeSteps = options.wedgeSteps
 
-    var shell = [];
-    var rim0 = []
-    var rim1 = []
+    var shell: Poly[] = []
+    var rim0: Vtx[] = []
+    var rim1: Vtx[] = []
 
     if (!sliceSteps || !wedgeSteps) {
 
-        function steps(f, n) {
+        const steps = (f: (x: number) => number, n: number) => {
             const eps = 1e-6
-            const tangent = (x) => vec2(eps, f(x+eps/2) - f(x-eps/2)).unit()
-            const angle = (v0, v1) => Math.acos(v1.dot(v0)) // assumes unit vectors
+            const tangent = (x: number) => vec2(eps, f(x+eps/2) - f(x-eps/2)).unit()
+            const angle = (v0: Vec3, v1: Vec3) => Math.acos(v1.dot(v0)) // unit vectors
             var minStep = 1 / n / 100
             var maxStep = 2 / n
             var x0 = 0
@@ -78,12 +137,12 @@ function shell(options) {
         }
 
         // profile in vertical (slice) dimension
-        const fSlice = (x) => radius(x, 0)
+        const fSlice = (x: number) => radius(x, 0)
         const nSlice = detail + 1
 
         // compute dimensions: diameter, widest point, height
         var maxRadius = 0
-        var maxRadiusAt
+        var maxRadiusAt = 0
         for (var s = 0; s <= 1; s += 1e-3) {
             const r = fSlice(s)
             if (r > maxRadius) {
@@ -91,10 +150,15 @@ function shell(options) {
                 maxRadiusAt = s
             }
         }
-        var height = path(1).minus(path(0)).length()
+
+        //var height = path(1).minus(path(0)).length()
+        var height = 0
+        const ds = 1e-2
+        for (var s = 0; s < 1; s += ds)
+            height += path(s+ds).minus(path(s)).length()
 
         // profile in horizontal (wedge) dimension
-        const fWedge = (a) => radius(maxRadiusAt, a)
+        const fWedge = (a: number) => radius(maxRadiusAt, a)
         const nWedge = 2 * Math.PI * maxRadius / height * detail + 1
         log('detail', detail, 'height', height, 'maxRadius', maxRadius, 'maxRadiusAt', maxRadiusAt, 'nWedge', nWedge)
         
@@ -111,20 +175,29 @@ function shell(options) {
     for (var is = 1; is < sliceSteps.length; is++) {
 
         // step along the path
-        var s0 = sliceSteps[is-1]
-        var s1 = sliceSteps[is]
-        var p0 = path(s0)
-        var p1 = path(s1)
+        const s0 = sliceSteps[is-1]
+        const s1 = sliceSteps[is]
+        const p0 = path(s0)
+        const p1 = path(s1)
 
-        var axisZ = p1.minus(p0).unit()
-        var isY = Math.abs(axisZ.y) > 0.5? 1 : 0;
-        var axisX = vec3(isY, 1-isY, 0).cross(axisZ).unit();
-        var axisY = axisX.cross(axisZ).unit();
-        
-        //for (var iw = 0; iw < wedges; iw++) {
-
-            //var w0 = (iw / wedges)
-            //var w1 = ((iw+1) / wedges)
+        const frame = (s: number) => {
+            const eps = 1e-6
+            const d = (f: (s: number) => Vec3) =>
+                (s: number) => f(s+eps).minus(f(s)).times(1/eps).unit()
+            const dp = d(path)
+            const d2p = d(dp)
+            const z = dp(s)
+            let x = d2p(s)
+            if (!isFinite(x.x) || !isFinite(x.y) || !isFinite(x.z)) {
+                // straight line
+                const isY = Math.abs(z.y) > 0.5? 1 : 0
+                x = vec3(isY, 1-isY, 0).cross(z).unit()
+            }
+            const y = x.cross(z).unit()
+            return {x, y}
+        }
+        const frame0 = frame(s0)
+        const frame1 = frame(s1)
 
         for (var iw = 1; iw < wedgeSteps.length; iw++) {
 
@@ -141,9 +214,9 @@ function shell(options) {
             var r10 = radius(s1, w0)
             var r11 = radius(s1, w1)
 
-            function point(p, r, w) {
+            const point = (p: Vec3, r: number, w: number, frame: {x: Vec3, y: Vec3}) => {
                 var angle = w * Math.PI * 2;
-                var out = axisX.times(Math.cos(angle)).plus(axisY.times(Math.sin(angle)));
+                var out = frame.x.times(Math.cos(angle)).plus(frame.y.times(Math.sin(angle)));
                 var pos = p.plus(out.times(r));
                 return vtx(pos/*, out.unit()*/);
             }
@@ -151,12 +224,12 @@ function shell(options) {
             //  p00 p01
             //  p10 p11
 
-            var p00 = point(p0, r00, w00)
-            var p01 = point(p0, r01, w01)
-            var p10 = point(p1, r10, w10)
-            var p11 = point(p1, r11, w11)
+            var p00 = point(p0, r00, w00, frame0)
+            var p01 = point(p0, r01, w01, frame0)
+            var p10 = point(p1, r10, w10, frame1)
+            var p11 = point(p1, r11, w11, frame1)
 
-            function add(...args) {
+            const add = (...args: Poly[]) => {
                 shell.push(flipped? poly(args.reverse()) : poly(args))
             }
 
@@ -177,7 +250,11 @@ function shell(options) {
     return {shell, rim0, rim1, sliceSteps, wedgeSteps}
 };
 
-function cap(pts, pt, flipped) {
+export function shell(options: any) {
+    return CSG.fromPolygons(_shell(options).shell)
+}
+
+function cap(pts: Vtx[], pt: Vec3, flipped: boolean) {
     var cap = []
     for (var i = 0; i < pts.length; i++) {
         var ply = [pts[i], pts[(i+1)%pts.length], vtx(pt)]
@@ -187,7 +264,7 @@ function cap(pts, pt, flipped) {
 }
 
 
-function rod(options) {
+export function rod(options: any) {
 
     options = options || {};
     var wedges = Math.floor(options.wedges) || 16;
@@ -196,15 +273,14 @@ function rod(options) {
     var radius = options.radius || (() => 0.5);
     var twist = options.twist || 0
 
-    var s = shell(options)
+    var s = _shell(options)
     var cap0 = cap(s.rim0, path(0), false)
     var cap1 = cap(s.rim1, path(1), true)
     var polygons = [s.shell, cap0, cap1].reduce((a,b) => a.concat(b))
     return CSG.fromPolygons(polygons)
 }
-exports.rod = rod
 
-function cone(options) {
+export function cone(options: any) {
 
     options = options || {}
     var radius = options.radius || 0.5
@@ -212,17 +288,16 @@ function cone(options) {
     var tip = options.tip || [0, 0.5, 0]
     var path = line(base, tip)
 
-    var s = shell(override(options, {
-        radius: (s) => (1-s) * radius,
+    var s = _shell(override(options, {
+        radius: (s: number) => (1-s) * radius,
         path
     }))
     var cap0 = cap(s.rim0, path(0), false)
     var polygons = s.shell.concat(cap0)
     return CSG.fromPolygons(polygons)
 }
-exports.cone = cone
 
-function tube(options) {
+export function tube(options: any) {
 
     options = options || {};
     var radius = options.radius || (() => 1);
@@ -231,14 +306,13 @@ function tube(options) {
     var outer = rod(options)
 
     var inner = rod(override(options, {
-        radius: (s) => radius(s) - thickness(s)
+        radius: (s: number) => radius(s) - thickness(s)
     }))
 
     return outer.subtract(inner)
 }
-exports.tube = tube
 
-function vase(options) {
+export function vase(options: any) {
 
     options = options || {};
     var radius = options.radius || (() => 1);
@@ -247,7 +321,7 @@ function vase(options) {
     var base = options.base==undefined? 1 : options.base // relative to thickness at base
 
     // outer
-    var outer = shell(override(options, {
+    var outer = _shell(override(options, {
         path: path
     }))
     var outerCap = cap(outer.rim0, path(0), false)
@@ -255,10 +329,10 @@ function vase(options) {
     // inner
     var height = path(1).minus(path(0)).length()
     var b = thickness(0, 0) * 2 * radius(0, 0)/ height // xxx min thickness over all a
-    const ss = (s) => b + (1-b) * s
-    var inner = shell(override(options, {
-        path: (s) => path(ss(s)),
-        radius: (s, a) => radius(ss(s), a) - thickness(ss(s), a),
+    const ss = (s: number) => b + (1-b) * s
+    var inner = _shell(override(options, {
+        path: (s: number) => path(ss(s)),
+        radius: (s: number, a: number) => radius(ss(s), a) - thickness(ss(s), a),
         flipped: true,
         sliceSteps: outer.sliceSteps,
         wedgeSteps: outer.wedgeSteps
@@ -281,6 +355,5 @@ function vase(options) {
     ].reduce((a,b) => a.concat(b))
     return CSG.fromPolygons(polygons)
 }
-exports.vase = vase
 
 
