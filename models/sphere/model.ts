@@ -1,44 +1,20 @@
 import * as assert from 'assert'
 import {log, CSG, ui} from '../../designer/designer'
+import {Vec3, vec3, eq, Vtx, vtx, Poly, poly} from '../../designer/lib'
 
-interface Vec3 {
-    x: number
-    y: number
-    z: number
-    plus(q: Vec3): Vec3
-    minus(q: Vec3): Vec3
-    times(m: number): Vec3
-    dot(q: Vec3): number
-    cross(q: Vec3): Vec3
-    unit(): Vec3
-    length(): number
-}
-
-function vec3(x: number, y: number, z: number): Vec3 {
-    return new CSG.Vector3D(x, y, z)
-}
-
-function eq(p: Vec3, q: Vec3) {
-    return p.x==q.x && p.y==q.y && p.z==q.z
-    //return p.minus(q).length() < 1e-10
-}
-
-interface Poly {
-}
-
-function poly(...args: Vtx[]): Poly {
-    return new CSG.Polygon(...args)
-}
-
-interface Vtx {
-}
-
-function vtx(v: Vec3): Vtx {
-    return new CSG.Vertex(v)
-}
+let nextVecName = 0;
+const vecNames: {[s: string]: string} = {}
 
 function prt(v: Vec3) {
-    return '(' + v.x + ',' + v.y + ',' + v.z + ')'
+    const s = '(' + v.x + ',' + v.y + ',' + v.z + ')'
+    if (s in vecNames) {
+        return vecNames[s]
+    } else {
+        const p = 'p' + (nextVecName++)
+        log(p, '=', s)
+        vecNames[s] = p
+        return p
+    }
 }
 
 //
@@ -60,8 +36,11 @@ class Tri {
         this.p2 = p2
     }
     
-    area(): number {
-        return this.p1.minus(this.p0).cross(this.p2.minus(this.p0)).length()
+    minAngle(): number {
+        const a01 = this.p1.minus(this.p0).unit().dot(this.p2.minus(this.p0).unit())
+        const a12 = this.p2.minus(this.p1).unit().dot(this.p0.minus(this.p1).unit())
+        const a20 = this.p0.minus(this.p2).unit().dot(this.p1.minus(this.p2).unit())
+        return Math.min(1-a01, 1-a12, 1-a20)
     }
 
     toPoly(): Poly {
@@ -82,8 +61,47 @@ class Sphere {
         surface?: (p: Vec3) => Vec3
     }) {
 
+
         const detail = options.detail || 10
         const surface = options.surface || ((p) => p.unit())
+
+//p588 0.2979837458563449  0.9084845686620523 0.29798374585634485
+//u588 0.29754773579168553 0.9071552732859368 0.2975477357916855   < p588
+
+//p592 0.30427712027893367 0.9026798259347101 0.30427712027893367
+//u592 0.3042771202789337  0.9026798259347102 0.3042771202789337    = p592
+
+//p591 0.3009141247442587  0.904931698560059  0.30091412474425866
+//u591 0.30091412474425877 0.9049316985600591 0.3009141247442587   = p591
+//s591 0.30091412474425877 0.9049316985600591 0.3009141247442587   = p591
+
+//p01  0.3011304330676393  0.9055821972983812 0.30113043306763926  mid(p588,p592)
+//u01  0.3009141247442587  0.904931698560059  0.30091412474425866  = p591
+//s01  0.3009141247442587  0.904931698560059  0.30091412474425866  = p591
+/*
+        const mid = (p: Vec3, q: Vec3) => p.plus(q).times(0.5)
+        const p588 = vec3(0.2979837458563449,0.9084845686620523,0.29798374585634485)
+        const p592 = vec3(0.30427712027893367,0.9026798259347101,0.30427712027893367)
+        const p591 = vec3(0.3009141247442587,0.904931698560059,0.30091412474425866)
+        const u588 = p588.unit()
+        const u592 = p592.unit()
+        const u591 = p591.unit()
+        const p01 = mid(p588,p592)
+        const u01 = p01.unit()
+        const s01 = surface(p01)
+        const s591 = surface(p591)
+        log('p588', p588.x, p588.y, p588.z)
+        log('p592', p592.x, p592.y, p592.z)
+        log('p591', p591.x, p591.y, p591.z)
+        log('u588', u588.x, u588.y, u588.z)
+        log('u592', u592.x, u592.y, u592.z)
+        log('u591', u591.x, u591.y, u591.z)
+        log('s591', s591.x, s591.y, s591.z)
+        log('p01', p01.x, p01.y, p01.z)
+        log('u01', u01.x, u01.y, u01.z)
+        log('s01', s01.x, s01.y, s01.z)
+        throw 'xxx'
+*/
 
         const p1 = surface(vec3(1, 1, 1))
         const p2 = surface(vec3(1, -1, -1))
@@ -97,45 +115,50 @@ class Sphere {
 
         let level = 0
 
-        const split = (t: Tri) => {
+        const split = (t: Tri, w: string) => {
 
-            const area = t.area()
-            if (area < 1e-4) {
-                //log('skipping split', 'level', level, 'area', area)
+            const minAngle = t.minAngle()
+            if (t.minAngle() < 1e-4) {
+                //log('skipping split', 'level', level, 'minAngle', minAngle)
                 return
             }
 
+            //log('  '.repeat(level), prt(t.p0), prt(t.p1), prt(t.p2), w, minAngle)
+
             const _level = level
+            //if (level > 100)
+            //    throw 'too deep'
+//            if (level > 20) {
+//                this.tris.push(t)
+//                return
+//            }
+
             level += 1
-            if (level > 100)
-                throw 'too deep'
-
-            try {
-                _split(t)
-            } catch (e) {
-                //log('  '.repeat(_level), area, prt(t.p0), prt(t.p1), prt(t.p2))
-                log('xxx exc', trinum, area, prt(t.p0), prt(t.p1), prt(t.p2))
-                throw e
-            }
-
+            _split(t)
             level -= 1
-
         }
 
 
         const _split = (t: Tri) => {
 
-            const add3 = (p: Vec3, q: Vec3, r: Vec3) => split(tri(p, q, r))
+            const add3 = (p: Vec3, q: Vec3, r: Vec3, w: string) => split(tri(p, q, r), w)
 
             // p q
             // s r
-            const add4 = (p: Vec3, q: Vec3, r: Vec3, s: Vec3) => {
-                if (p.minus(r).length() < q.minus(s).length()) {
-                    add3(p, r, s)
-                    add3(r, p, q)
+            const add4 = (p: Vec3, q: Vec3, r: Vec3, s: Vec3, w: string) => {
+                const c = p.plus(q).plus(r).plus(s).times(0.25)
+                const cs = surface(c)
+                if (c.minus(cs).length() > error) {
+                    add3(p, q, cs, 'x')
+                    add3(q, r, cs, 'x')
+                    add3(r, s, cs, 'x')
+                    add3(s, p, cs, 'x')
+                }  else if (p.minus(r).length() < q.minus(s).length()) {
+                    add3(p, r, s, w)
+                    add3(r, p, q, w)
                 } else {
-                    add3(q, s, p)
-                    add3(s, q, r)
+                    add3(q, s, p, w)
+                    add3(s, q, r, w)
                 }
             }
 
@@ -144,7 +167,11 @@ class Sphere {
             //    p20     p01
             //
             //  p2    p12     p1
-            const mid = (p: Vec3, q: Vec3) => p.plus(q).times(0.5)
+            const mid = (p: Vec3, q: Vec3) => {
+                //const m = 0.5
+                const m = 0.3 + Math.random() * 0.4
+                return p.times(m).plus(q.times(1-m))
+            }
             const p01 = mid(t.p0, t.p1)
             const p12 = mid(t.p1, t.p2)
             const p20 = mid(t.p2, t.p0)
@@ -155,47 +182,67 @@ class Sphere {
             const bad12 = s12.minus(p12).length() > error
             const bad20 = s20.minus(p20).length() > error
             if (bad01 && bad12 && bad20) {
-                add3(t.p0, s01, s20)
-                add3(t.p1, s12, s01)            
-                add3(t.p2, s20, s12)
-                add3(s01, s12, s20)
+                add3(t.p0, s01, s20, 'a')
+                add3(t.p1, s12, s01, 'b')            
+                add3(t.p2, s20, s12, 'c')
+                add3(s01, s12, s20, 'd')
             } else if (bad01 && bad12) {
-                add3(t.p1, s12, s01)
-                add4(s01, s12, t.p2, t.p0)
+                add3(t.p1, s12, s01, 'e')
+                add4(s01, s12, t.p2, t.p0, 'f')
             } else if (bad12 && bad20) {
-                add3(t.p2, s20, s12)
-                add4(s12, s20, t.p0, t.p1)
+                add3(t.p2, s20, s12, 'g')
+                add4(s12, s20, t.p0, t.p1, 'h')
             } else if (bad20 && bad01) {
-                add3(t.p0, s01, s20)
-                add4(s20, s01, t.p1, t.p2)
+                add3(t.p0, s01, s20, 'i')
+                add4(s20, s01, t.p1, t.p2, 'j')
             } else if (bad01) {
-                add3(s01, t.p2, t.p0)
-                add3(s01, t.p1, t.p2)
+                add3(s01, t.p2, t.p0, 'k')
+                add3(s01, t.p1, t.p2, 'l')
             } else if (bad12) {
-                add3(s12, t.p0, t.p1)
-                add3(s12, t.p2, t.p0)
+                add3(s12, t.p0, t.p1, 'm')
+                add3(s12, t.p2, t.p0, 'n')
             } else if (bad20) {
-                add3(s20, t.p1, t.p2)
-                add3(s20, t.p0, t.p1)
+                add3(s20, t.p1, t.p2, 'o')
+                add3(s20, t.p0, t.p1, 'p')
             } else {
                 this.tris.push(t)
             }
 
         }
 
-        //let error = 1
-        let error = 0.001
+        const splitOnce = (t: Tri) => {
+            const mid = (p: Vec3, q: Vec3) => p.plus(q).times(0.5)
+            const p01 = mid(t.p0, t.p1)
+            const p12 = mid(t.p1, t.p2)
+            const p20 = mid(t.p2, t.p0)
+            const s01 = surface(p01)
+            const s12 = surface(p12)
+            const s20 = surface(p20)
+            this.tris.push(tri(t.p0, s01, s20))
+            this.tris.push(tri(t.p1, s12, s01))
+            this.tris.push(tri(t.p2, s20, s12))
+            this.tris.push(tri(s01, s12, s20))
+        }
+
+        while (this.tris.length < detail*detail / 4) {
+            const tris = this.tris
+            this.tris = []
+            tris.forEach(t => splitOnce(t))
+        }
+
+        let error = 1
+        //let error = 0.001
         let trinum = 0
         while (this.tris.length < detail*detail) {
+            log('xxx this.tris.length', this.tris.length)
             error /= 2
             log('xxx error', error)
             const tris = this.tris
             this.tris = []
             tris.forEach(t => {
-                split(t)
+                split(t, 'root')
                 trinum++
             })
-            break
         }
     }
 
