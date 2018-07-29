@@ -17,6 +17,10 @@ export function vec3(x: number, y: number, z: number) {
     return new CSG.Vector3D(x, y, z)
 }
 
+export function prt(p: Vec3) {
+    return '(' + p.x + ',' + p.y + ',' + p.z + ')'
+}
+
 export interface Vec2 {
     x: number
     y: number
@@ -108,25 +112,51 @@ function _shell(options: any) {
     var rim0: Vtx[] = []
     var rim1: Vtx[] = []
 
+    const frame = (s: number) => {
+        const eps = 1e-6
+        const d = (f: (s: number) => Vec3) =>
+            (s: number) => f(s+eps).minus(f(s)).times(1/eps).unit()
+        const dp = d(path)
+        const d2p = d(dp)
+        const z = dp(s)
+        let x = d2p(s)
+        if (!isFinite(x.x) || !isFinite(x.y) || !isFinite(x.z)) {
+            // straight line
+            const isY = Math.abs(z.y) > 0.5? 1 : 0
+            x = vec3(isY, 1-isY, 0).cross(z).unit()
+        }
+        const y = x.cross(z).unit()
+        return {x, y}
+    }
+
+    const point = (p: Vec3, r: number, w: number, frame: {x: Vec3, y: Vec3}) => {
+        const angle = w * Math.PI * 2;
+        const out = frame.x.times(Math.cos(angle)).plus(frame.y.times(Math.sin(angle)));
+        const pos = p.plus(out.times(r));
+        return pos
+    }
+
     if (!sliceSteps || !wedgeSteps) {
 
-        const steps = (f: (x: number) => number, n: number) => {
+        const steps = (f: (x: number) => Vec3, n: number) => {
             const eps = 1e-6
-            const tangent = (x: number) => vec2(eps, f(x+eps/2) - f(x-eps/2)).unit()
+            const tangent = (x: number) => f(x+eps/2).minus(f(x-eps/2)).unit()
             const angle = (v0: Vec3, v1: Vec3) => Math.acos(v1.dot(v0)) // unit vectors
             var minStep = 1 / n / 100
             var maxStep = 2 / n
             var x0 = 0
-            var pt0 = vec2(x0, f(x0))
+            var pt0 = f(x0)
             var tan0 = tangent(x0)
             var xs = [x0]
             for (var x1 = minStep; x1 <= 1; x1 += minStep) {
                 if (x1 >= 1 - minStep)
                     x1 = 1
-                var pt1 = vec2(x1, f(x1))
+                var pt1 = f(x1)
                 var tan1 = tangent(x1)
                 var chord = pt1.minus(pt0).unit()
                 if (angle(chord, tan0) > maxAngle || angle(chord, tan1) > maxAngle || x1 - x0 > maxStep || x1 == 1) {
+                    //log('xxx pt0', prt(pt0), 'pt1', prt(pt1), 'tan0', prt(tan0), 'tan1', prt(tan1), 'chord', prt(chord))
+                    //log('xxx angle(chord, tan0)', angle(chord, tan0), 'angle(chort, tan1)', angle(chord, tan1), 'maxAngle', maxAngle, 'x1-x0', x1-x0, 'maxStep', maxStep)
                     xs.push(x1)
                     x0 = x1
                     pt0 = pt1
@@ -136,31 +166,39 @@ function _shell(options: any) {
             return xs //= xs.map((s) => s / xs[xs.length - 1])
         }
 
-        // profile in vertical (slice) dimension
-        const fSlice = (x: number) => radius(x, 0)
-        const nSlice = detail + 1
+        // compute length in slice direction, i.e. length of path
+        var sliceLength = 0
+        const ds = 1e-2
+        for (var s = 0; s < 1; s += ds)
+            sliceLength += path(s+ds).minus(path(s)).length()
 
-        // compute dimensions: diameter, widest point, height
+        // compute dimensions: diameter, widest point
         var maxRadius = 0
         var maxRadiusAt = 0
         for (var s = 0; s <= 1; s += 1e-3) {
-            const r = fSlice(s)
+            const r = radius(s, 0)
             if (r > maxRadius) {
                 maxRadius = r
                 maxRadiusAt = s
             }
         }
+        const wedgeLength = 2 * Math.PI * maxRadius
 
-        //var height = path(1).minus(path(0)).length()
-        var height = 0
-        const ds = 1e-2
-        for (var s = 0; s < 1; s += ds)
-            height += path(s+ds).minus(path(s)).length()
+        // target slice and wedge counts; determines minimum and maximum slice and wedge counts via slice()
+        const k = Math.sqrt((detail * detail) / (sliceLength * wedgeLength))
+        const nWedge = wedgeLength * k
+        const nSlice = sliceLength * k
+        log('detail', detail, 'sliceLength', sliceLength, 'maxRadius', maxRadius, 'maxRadiusAt', maxRadiusAt, 'nWedge', nWedge, 'nSlice', nSlice)
+
+        // profile in vertical (slice) dimension
+        const fSlice = (x: number) => point(path(x), radius(x, 0), 0, frame(x))
 
         // profile in horizontal (wedge) dimension
-        const fWedge = (a: number) => radius(maxRadiusAt, a)
-        const nWedge = 2 * Math.PI * maxRadius / height * detail + 1
-        log('detail', detail, 'height', height, 'maxRadius', maxRadius, 'maxRadiusAt', maxRadiusAt, 'nWedge', nWedge)
+        const fWedge = (x: number) => {
+            const a = 2 * Math.PI * x
+            const r = radius(maxRadiusAt, x)
+            return vec3(r * Math.sin(a), r * Math.cos(a), 0)
+        }
         
         // find an a that produces the expected number of facets, detail**2
         var maxAngle = 1e-3 // xxx   / n/ 10 //minStep
@@ -180,22 +218,6 @@ function _shell(options: any) {
         const p0 = path(s0)
         const p1 = path(s1)
 
-        const frame = (s: number) => {
-            const eps = 1e-6
-            const d = (f: (s: number) => Vec3) =>
-                (s: number) => f(s+eps).minus(f(s)).times(1/eps).unit()
-            const dp = d(path)
-            const d2p = d(dp)
-            const z = dp(s)
-            let x = d2p(s)
-            if (!isFinite(x.x) || !isFinite(x.y) || !isFinite(x.z)) {
-                // straight line
-                const isY = Math.abs(z.y) > 0.5? 1 : 0
-                x = vec3(isY, 1-isY, 0).cross(z).unit()
-            }
-            const y = x.cross(z).unit()
-            return {x, y}
-        }
         const frame0 = frame(s0)
         const frame1 = frame(s1)
 
@@ -214,36 +236,28 @@ function _shell(options: any) {
             var r10 = radius(s1, w0)
             var r11 = radius(s1, w1)
 
-            const point = (p: Vec3, r: number, w: number, frame: {x: Vec3, y: Vec3}) => {
-                var angle = w * Math.PI * 2;
-                var out = frame.x.times(Math.cos(angle)).plus(frame.y.times(Math.sin(angle)));
-                var pos = p.plus(out.times(r));
-                return vtx(pos/*, out.unit()*/);
-            }
-
-            //  p00 p01
-            //  p10 p11
-
-            var p00 = point(p0, r00, w00, frame0)
-            var p01 = point(p0, r01, w01, frame0)
-            var p10 = point(p1, r10, w10, frame1)
-            var p11 = point(p1, r11, w11, frame1)
+            //  v00 v01
+            //  v10 v11
+            var v00 = vtx(point(p0, r00, w00, frame0))
+            var v01 = vtx(point(p0, r01, w01, frame0))
+            var v10 = vtx(point(p1, r10, w10, frame1))
+            var v11 = vtx(point(p1, r11, w11, frame1))
 
             const add = (...args: Poly[]) => {
                 shell.push(flipped? poly(args.reverse()) : poly(args))
             }
 
             if (s0 == 0)
-                rim0.push(p00)
+                rim0.push(v00)
             if (twist < 0) {
-                if (r10 != 0 || r11 != 0) add(p00, p10, p11)
-                if (r01 != 0 || r00 != 0) add(p11, p01, p00)
+                if (r10 != 0 || r11 != 0) add(v00, v10, v11)
+                if (r01 != 0 || r00 != 0) add(v11, v01, v00)
             } else {
-                if (r00 != 0 || r01 != 0) add(p01, p00, p10)
-                if (r11 != 0 || r10 != 0) add(p10, p11, p01)
+                if (r00 != 0 || r01 != 0) add(v01, v00, v10)
+                if (r11 != 0 || r10 != 0) add(v10, v11, v01)
             }
             if (s1 == 1)
-                rim1.push(p10)
+                rim1.push(v10)
         }
     }
 
