@@ -1,5 +1,5 @@
 import {log, CSG, ui} from '../../designer/designer'
-import {Vec3, vec3, shell, line, shoulders, circle, time, prt} from '../../designer/lib'
+import {vec3, shell, rod, line, shoulders, circle, time, prt} from '../../designer/lib'
 
 const detail = ui.slider({name: 'detail', min: 20, max: 200, value: 50, immaterial: true})
 
@@ -20,7 +20,7 @@ const ringShoulderPortion = ringShoulder / (ringCircumference - ringGap)
 
 const ring = shell({
     detail,
-    radius: shoulders(ringShoulderPortion, ringShoulderPortion, ringTubeRadius),
+    radius: shoulders(ringShoulderPortion, ringShoulderPortion, ringTubeRadius, 0),
     path: circle(ringGapPortion / 2, 1 - ringGapPortion / 2, ringRadius)
 }).translate(vec3(0, ringRadius - ringTubeRadius / 2, ringTubeRadius))
 
@@ -31,10 +31,14 @@ const ring = shell({
 const diskHeight = ui.slider({name: 'disk height', min: 1.0, max: 10.0, step: 0.1, value: 5})
 const diskDiameter = ui.slider({name: 'disk diameter', min: 1.0, max: 40.0, step: 0.1, value: 20})
 const diskY = - diskDiameter / 2 + ringTubeRadius / 2
+const diskShoulder = 1
 
-const disk = shell({
+const diskRadius = diskDiameter / 2
+const diskShoulderPortion = diskShoulder / diskHeight
+
+const disk = rod({
     detail,
-    radius: shoulders(0.1, 0.1, diskDiameter / 2),
+    radius: shoulders(diskShoulderPortion, diskShoulderPortion, diskRadius, diskRadius - diskShoulder),
     path: line(vec3(0,0,0), vec3(0,0,diskHeight)),
 }).translate(vec3(0, diskY, 0))
 

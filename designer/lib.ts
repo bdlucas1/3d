@@ -82,14 +82,14 @@ function wave(start: number, end: number, min: number, max: number) {
     }
 }
 
-export function shoulders(s0: number, s1: number, r: number) {
+export function shoulders(s0: number, s1: number, outer: number, inner: number) {
     return (s: number) => {
         let v = 1
         if (s < s0)
             v = Math.sqrt(1 - (1 - s / s0) ** 2)
         else if (1 - s < s1)
             v = Math.sqrt(1 - (1 - (1 - s) / s1) ** 2)
-        return r * v
+        return (outer - inner) * v + inner
     }
 }
 
