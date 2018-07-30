@@ -1,5 +1,5 @@
 import {log, CSG, ui} from '../../designer/designer'
-import {Vec3, vec3, shell, line, shoulders, circle, time} from '../../designer/lib'
+import {Vec3, vec3, shell, line, shoulders, circle, time, prt} from '../../designer/lib'
 
 const detail = ui.slider({name: 'detail', min: 20, max: 200, value: 50, immaterial: true})
 
@@ -30,12 +30,22 @@ const ring = shell({
 
 const diskHeight = ui.slider({name: 'disk height', min: 1.0, max: 10.0, step: 0.1, value: 5})
 const diskDiameter = ui.slider({name: 'disk diameter', min: 1.0, max: 40.0, step: 0.1, value: 20})
+const diskY = - diskDiameter / 2 + ringTubeRadius / 2
 
 const disk = shell({
     detail,
     radius: shoulders(0.1, 0.1, diskDiameter / 2),
     path: line(vec3(0,0,0), vec3(0,0,diskHeight)),
-}).translate(vec3(0, - diskDiameter / 2 + ringTubeRadius / 2, 0))
+}).translate(vec3(0, diskY, 0))
+
+//
+// figure
+//
+
+const figureSize = ui.slider({name: 'figure size', min: 0.1, max: 40, step: 0.1, value: 15})
+const figure = ui.load({name: 'figure file', value: 'none'})
+    .scale(vec3(figureSize, figureSize, figureSize))
+    .translate(vec3(0, diskY, diskHeight * 0.9))
 
 //
 // put it together
@@ -43,11 +53,11 @@ const disk = shell({
 
 var charm: CSG
 time('union', () => {
-    charm = ring.union(disk)
+    charm = ring.union(disk).union(figure)
 })
 
 const size = ringHole + 2 * ringTube
 ui.view({distance: 10 * size, height: 2 * size, center: vec3(0, 0, 0)})
 
-export const components = {charm, ring, disk}
+export const components = {charm, ring, disk, figure}
 
