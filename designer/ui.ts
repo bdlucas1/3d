@@ -1,3 +1,5 @@
+import * as fs from 'fs'
+import * as path from 'path'
 import * as $ from 'jquery'
 import {remote} from 'electron'
 import * as spline from 'commons-math-interpolation'
@@ -9,13 +11,16 @@ import * as lib from '../designer/lib'
 
 const log = remote.getGlobal('console').log
 
+const CSG = require('@jscad/CSG').CSG
+const io = require('@jscad/io')
+
 export type ViewOptions = {
     distance: number,
     height: number,
     center: any, // xxx csg vector
 }
 
-export type Values = {[name: string]: number | boolean | CurveValue}
+export type Values = {[name: string]: number | boolean | CurveValue | string}
 
 interface Control<T> {
     value: T
@@ -205,6 +210,101 @@ export function checkbox(options: CheckboxOptions) {
     log('value', options.name, control.value)
     return control.value
 }
+
+//
+// Load
+//
+
+type LoadOptions = {
+    name: string,
+    value: string
+}
+
+class Load implements Control<string> {
+
+    static none = 'none'
+
+    static loaded: {[fn: string]: any} = {'none': new CSG()}
+
+    static load = (fn: string) => {
+        let csg = Load.loaded[fn]
+        if (!csg) {
+            lib.time('read stl', () => {
+                const data = fs.readFileSync(fn).toString()
+                csg = io.stlDeSerializer.deserialize(data, fn, {output: 'csg'})
+                const bounds = csg.getBounds()
+                const mid = bounds[0].plus(bounds[1]).times(0.5)
+                const extent = bounds[1].minus(bounds[0])
+                const scale = 1 / Math.max(extent.x, extent.y, extent.z)
+                csg = csg.translate(lib.vec3(-mid.x, -mid.y, -bounds[0].z)).scale(lib.vec3(scale, scale, scale))
+            })
+            Load.loaded[fn] = csg
+        }
+        return csg
+    }
+
+    elt: HTMLSelectElement
+
+    constructor(options: LoadOptions) {
+
+        const addOptions = (dn: string) => {
+            fs.readdirSync(dn).forEach(name => {
+                const fn = path.join(dn, name)
+                if (fs.statSync(fn).isDirectory()) {
+                    addOptions(fn)
+                } else if (name.endsWith('.stl')) {
+                    $('<option>').attr('value', fn).text(name).appendTo(this.elt)
+                }
+            })
+        }
+
+        this.elt = <HTMLSelectElement>$('<select>')[0]
+        $('<option>').attr('value', Load.none).text(Load.none).appendTo(this.elt)
+        addOptions('../imports')
+        this.elt.value = options.value || Load.none
+    }
+
+    activate() {
+        $(this.elt)
+            .on('change', () => {
+                log('change', this.value)
+                designer.change()
+            })
+    }
+
+    get value(): string {
+        return this.elt.value
+    }
+
+    set value(value: string) {
+        this.elt.value = value
+    }
+}
+
+export function load(options: LoadOptions) {
+
+    if (!Controls.current)
+        return
+
+    // remember default controls
+    Controls.current.defaultValues[options.name] = options.value
+
+    // create Load
+    let control = Controls.current.controls[options.name]
+    if (!control) {
+        log('new load', options.value)
+        control = new Load(options)
+
+        //.attr('id', 'load-' + name
+        Controls.current.controls[options.name] = control
+    }
+    log('value', options.name, control.value)
+
+    // load and return it
+    return Load.load(control.value)
+}
+
+
 
 //
 // Curve
