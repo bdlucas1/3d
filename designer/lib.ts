@@ -1,9 +1,14 @@
+import * as fs from 'fs'
 import {log, CSG, ui} from './designer'
 
+export function now() {
+    return new Date().getTime()
+}
+
 export function time(name: string, f: () => void) {
-    const t0 = new Date().getTime()
+    const t0 = now()
     f()
-    const t = new Date().getTime() - t0
+    const t = now() - t0
     log('time:', name, t, 'ms')
 }
 
@@ -69,6 +74,79 @@ export function combine(...csgs: CSG[]) {
     for (const csg of csgs)
         polys = polys.concat(csg.polygons)
     return CSG.fromPolygons(polys)
+}
+
+//
+// i/o
+//
+
+export function parseSTLA(data: Buffer) {
+    let checked = false
+    let pts: Vtx[] = []
+    const polys: Poly[] = []
+    data.toString().split('\n').forEach((line: string) => {
+        if (!checked && !line.startsWith('solid'))
+            throw 'not stla'
+        checked = true
+        const fields = line.split(/ +/)
+        if (fields[1] == 'vertex') {
+            const x = parseFloat(fields[2])
+            const y = parseFloat(fields[3])
+            const z = parseFloat(fields[4])
+            pts.push(vtx(vec3(x, y, z)))
+        } else if (fields[1] == 'endloop') {
+            polys.push(poly(pts))
+            pts = []
+        }
+    })
+    return CSG.fromPolygons(polys)
+}
+
+export function parseSTLB(data: Buffer) {
+    const view = new DataView(data.buffer)
+    const count = view.getUint32(80, true)
+    log('poly count', count)
+    const polys: Poly[] = []
+    let pos = 84
+    for (let i = 0; i < count; i++) {
+        pos += 12 // skip normal
+        const pts: Vtx[] = []
+        for (let j = 0; j < 3; j++) {
+            const x = view.getFloat32(pos, true); pos += 4
+            const y = view.getFloat32(pos, true); pos += 4
+            const z = view.getFloat32(pos, true); pos += 4
+            pts.push(vtx(vec3(x, y, z)))
+        }
+        polys.push(poly(pts))
+        pos += 2 // skip attribute byte count (assume 0)
+    }
+    return CSG.fromPolygons(polys)
+}
+
+const loadedFiles: {[fn: string]: CSG} = {}
+
+export function readSTL(fn: string) {
+    let csg = loadedFiles[fn]
+    if (!csg) {
+        const data = fs.readFileSync(fn)
+        try {
+            csg = parseSTLA(data)
+        } catch (e) {
+            csg = parseSTLB(data)
+        }
+        loadedFiles[fn] = csg
+    }
+    return csg
+}
+
+export function place(csg: CSG) {
+    const bounds = csg.getBounds()
+    log('csg bounds', prt(bounds[0]), prt(bounds[1]))
+    const mid = bounds[0].plus(bounds[1]).times(0.5)
+    const extent = bounds[1].minus(bounds[0])
+    const scale = 1 / Math.max(extent.x, extent.y, extent.z)
+    csg = csg.translate(vec3(-mid.x, -mid.y, -bounds[0].z)).scale(vec3(scale, scale, scale))
+    return csg
 }
 
 //
