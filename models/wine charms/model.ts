@@ -1,5 +1,5 @@
 import {log, CSG, ui} from '../../designer/designer'
-import {vec3, shell, rod, line, shoulders, circle, combine} from '../../designer/lib'
+import {vec3, shell, rod, line, shoulders, circle, combine, place} from '../../designer/lib'
 
 const detail = ui.slider({name: 'detail', min: 20, max: 200, value: 50, immaterial: true})
 
@@ -47,12 +47,18 @@ const disk = rod({
 //
 
 const figureSize = ui.slider({name: 'figure size', min: 0.5, max: 40, step: 0.5, value: 15})
-const figureX = ui.slider({name: 'figure x', min: -5, max: 5, step: 0.5, value: 0})
-const figureY = ui.slider({name: 'figure y', min: -5, max: 5, step: 0.5, value: 0})
-const figureZ = ui.slider({name: 'figure z', min: -2, max: 2, step: 0.1, value: 0})
-const figure = ui.load({name: 'figure file', value: 'none'})
+const figureXoff = ui.slider({name: 'figure x off', min: -5, max: 5, step: 0.5, value: 0})
+const figureYoff = ui.slider({name: 'figure y off', min: -5, max: 5, step: 0.5, value: 0})
+const figureZoff = ui.slider({name: 'figure z off', min: -2, max: 2, step: 0.1, value: 0})
+const figureXrot = ui.slider({name: 'figure x rot', min: -180, max: 180, step: 5, value: 0})
+const figureYrot = ui.slider({name: 'figure y rot', min: -180, max: 180, step: 5, value: 0})
+const figureZrot = ui.slider({name: 'figure z rot', min: -180, max: 180, step: 5, value: 0})
+let figure = ui.load({name: 'figure file', value: 'none'})
+figure = figure.rotateX(figureXrot).rotateY(figureYrot).rotateZ(figureZrot)
+figure = place(figure)
+figure = figure
     .scale(vec3(figureSize, figureSize, figureSize))
-    .translate(vec3(0 + figureX, diskY + figureY, diskHeight + figureZ))
+    .translate(vec3(0 + figureXoff, diskY + figureYoff, diskHeight + figureZoff))
 
 //
 // put it together
