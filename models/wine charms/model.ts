@@ -1,5 +1,5 @@
 import {log, CSG, ui} from '../../designer/designer'
-import {vec3, shell, rod, line, shoulders, circle, time, prt} from '../../designer/lib'
+import {vec3, shell, rod, line, shoulders, circle, combine} from '../../designer/lib'
 
 const detail = ui.slider({name: 'detail', min: 20, max: 200, value: 50, immaterial: true})
 
@@ -7,9 +7,9 @@ const detail = ui.slider({name: 'detail', min: 20, max: 200, value: 50, immateri
 // ring
 //
 
-const ringHole = ui.slider({name: 'ring hole', min: 1.0, max: 20.0, step: 0.1, value: 10})
-const ringTube = ui.slider({name: 'ring tube', min: 1.0, max: 10.0, step: 0.1, value: 5})
-const ringGap = ui.slider({name: 'ring gap', min: 0.0, max: 10, step: 0.1, value: 8})
+const ringHole = ui.slider({name: 'ring hole', min: 1.0, max: 20.0, step: 0.5, value: 10})
+const ringTube = ui.slider({name: 'ring tube', min: 1.0, max: 10.0, step: 0.5, value: 3})
+const ringGap = ui.slider({name: 'ring gap', min: 0.0, max: 10, step: 0.5, value: 7})
 const ringShoulder = ui.slider({name: 'ring shoulder', min: 0.0, max: 5, step: 0.1, value: 1})
 
 const ringRadius = (ringTube + ringHole) / 2         // mid radius of torus
@@ -28,8 +28,8 @@ const ring = shell({
 // disk
 //
 
-const diskHeight = ui.slider({name: 'disk height', min: 1.0, max: 10.0, step: 0.1, value: 5})
-const diskDiameter = ui.slider({name: 'disk diameter', min: 1.0, max: 40.0, step: 0.1, value: 20})
+const diskHeight = ui.slider({name: 'disk height', min: 1.0, max: 10.0, step: 0.5, value: 3})
+const diskDiameter = ui.slider({name: 'disk diameter', min: 1.0, max: 40.0, step: 0.5, value: 20})
 const diskY = - diskDiameter / 2 + ringTubeRadius / 2
 const diskShoulder = 1
 
@@ -46,19 +46,19 @@ const disk = rod({
 // figure
 //
 
-const figureSize = ui.slider({name: 'figure size', min: 0.1, max: 40, step: 0.1, value: 15})
+const figureSize = ui.slider({name: 'figure size', min: 0.5, max: 40, step: 0.5, value: 15})
+const figureX = ui.slider({name: 'figure x', min: -5, max: 5, step: 0.5, value: 0})
+const figureY = ui.slider({name: 'figure y', min: -5, max: 5, step: 0.5, value: 0})
+const figureZ = ui.slider({name: 'figure z', min: -2, max: 2, step: 0.1, value: 0})
 const figure = ui.load({name: 'figure file', value: 'none'})
     .scale(vec3(figureSize, figureSize, figureSize))
-    .translate(vec3(0, diskY, diskHeight * 0.9))
+    .translate(vec3(0 + figureX, diskY + figureY, diskHeight + figureZ))
 
 //
 // put it together
 //
 
-var charm: CSG
-time('union', () => {
-    charm = ring.union(disk).union(figure)
-})
+const charm = combine(ring, disk, figure)
 
 const size = ringHole + 2 * ringTube
 ui.view({distance: 10 * size, height: 2 * size, center: vec3(0, 0, 0)})
