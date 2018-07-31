@@ -63,6 +63,14 @@ export function vtx(v: Vec3): Vtx {
     return new CSG.Vertex(v)
 }
 
+// cheap alternative to union
+export function combine(...csgs: CSG[]) {
+    let polys: CSG[] = []
+    for (const csg of csgs)
+        polys = polys.concat(csg.polygons)
+    return CSG.fromPolygons(polys)
+}
+
 //
 //
 //
