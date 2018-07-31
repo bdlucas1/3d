@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import * as readline from 'readline'
 import * as $ from 'jquery'
 import {remote} from 'electron'
 import * as spline from 'commons-math-interpolation'
@@ -63,8 +64,13 @@ export class Controls {
     }
 
     loadValues(values: Values) {
-        for (const name in values)
-            this.controls[name].value = values[name]
+        for (const name in values) {
+            try {
+                this.controls[name].value = values[name]
+            } catch (e) {
+                log('ERROR setting', name, e)
+            }
+        }
     }
 }
     
@@ -226,17 +232,15 @@ class Load implements Control<string> {
 
     static loaded: {[fn: string]: any} = {'none': new CSG()}
 
+
     static load = (fn: string) => {
         let csg = Load.loaded[fn]
         if (!csg) {
             lib.time('read stl', () => {
-                const data = fs.readFileSync(fn).toString()
-                csg = io.stlDeSerializer.deserialize(data, fn, {output: 'csg'})
-                const bounds = csg.getBounds()
-                const mid = bounds[0].plus(bounds[1]).times(0.5)
-                const extent = bounds[1].minus(bounds[0])
-                const scale = 1 / Math.max(extent.x, extent.y, extent.z)
-                csg = csg.translate(lib.vec3(-mid.x, -mid.y, -bounds[0].z)).scale(lib.vec3(scale, scale, scale))
+                //const data = fs.readFileSync(fn)
+                //csg = io.stlDeSerializer.deserialize(data, fn, {output: 'csg'})
+                //csg = lib.parseSTLA(data)
+                csg = lib.readSTL(fn)
             })
             Load.loaded[fn] = csg
         }
