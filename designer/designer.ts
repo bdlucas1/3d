@@ -385,8 +385,9 @@ class ExportModels extends Control {
                 const fn = path.join(Model.dn, m.name, m.currentVariant.name, name) + '.stl'
                 log('writing', fn)
                 const csg = m.currentVariant.components![name] //.scale(100)
-                const stl = io.stlSerializer.serialize(csg, {binary: false})
-                fs.writeFileSync(fn, stl[0].toString())
+                lib.writeSTL(fn, csg)
+                //const stl = io.stlSerializer.serialize(csg, {binary: false})
+                //fs.writeFileSync(fn, stl[0].toString())
             }
         })
     }

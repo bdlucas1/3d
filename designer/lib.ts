@@ -139,6 +139,32 @@ export function readSTL(fn: string) {
     return csg
 }
 
+export function writeSTL(fn: string, csg: CSG) {
+
+    const count = csg.polygons.length
+    const buf = new ArrayBuffer(84 + count * 50)
+    const view = new DataView(buf)
+
+    view.setUint32(80, count, true)
+
+    let pos = 84
+    for (const poly of csg.polygons) {
+        if (poly.vertices.length != 3)
+            throw 'not a triangle'
+        view.setFloat32(pos, poly.plane.normal.x, true); pos += 4
+        view.setFloat32(pos, poly.plane.normal.y, true); pos += 4
+        view.setFloat32(pos, poly.plane.normal.z, true); pos += 4
+        for (let j = 0; j < 3; j++) {
+            view.setFloat32(pos, poly.vertices[j].pos.x, true); pos += 4
+            view.setFloat32(pos, poly.vertices[j].pos.y, true); pos += 4
+            view.setFloat32(pos, poly.vertices[j].pos.z, true); pos += 4
+        }
+        pos += 2 // skip attribute byte count
+    }
+
+    fs.writeFileSync(fn, new Buffer(buf))
+}
+
 export function place(csg: CSG) {
     const bounds = csg.getBounds()
     log('csg bounds', prt(bounds[0]), prt(bounds[1]))
