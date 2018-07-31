@@ -1,0 +1,14 @@
+{
+    "detail": 50,
+    "ring hole": 10,
+    "ring tube": 3,
+    "ring gap": 7,
+    "ring shoulder": 1,
+    "disk height": 3,
+    "disk diameter": 25,
+    "figure size": 22,
+    "figure x": 0,
+    "figure y": 2,
+    "figure z": 0,
+    "figure file": "../imports/Treefrog/files/treefrog_45_cut.stl"
+}
