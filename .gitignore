@@ -6,7 +6,7 @@ node_modules
 *.stl
 compare
 *.prusa
-*.gcode
+#*.gcode
 designer/*.js
 models/sphere/*.js
 models/wine charms/*.js
