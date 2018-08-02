@@ -28,6 +28,7 @@ const ring = shell({
 // disk
 //
 
+const showDisk = ui.checkbox({name: 'show disk', value: true})
 const diskHeight = ui.slider({name: 'disk height', min: 1.0, max: 10.0, step: 0.5, value: 3})
 const diskDiameter = ui.slider({name: 'disk diameter', min: 1.0, max: 40.0, step: 0.5, value: 20})
 const diskY = - diskDiameter / 2 + ringTubeRadius / 2
@@ -46,28 +47,30 @@ const disk = rod({
 // figure
 //
 
+const figureGrounded = ui.checkbox({name: 'figure grounded', value: false})
 const figureSize = ui.slider({name: 'figure size', min: 0.5, max: 40, step: 0.5, value: 15})
-const figureXoff = ui.slider({name: 'figure x off', min: -5, max: 5, step: 0.5, value: 0})
-const figureYoff = ui.slider({name: 'figure y off', min: -5, max: 5, step: 0.5, value: 0})
+const figureXoff = ui.slider({name: 'figure x off', min: -10, max: 10, step: 0.5, value: 0})
+const figureYoff = ui.slider({name: 'figure y off', min: -10, max: 10, step: 0.5, value: 0})
 const figureZoff = ui.slider({name: 'figure z off', min: -2, max: 2, step: 0.1, value: 0})
 const figureXrot = ui.slider({name: 'figure x rot', min: -180, max: 180, step: 5, value: 0})
 const figureYrot = ui.slider({name: 'figure y rot', min: -180, max: 180, step: 5, value: 0})
 const figureZrot = ui.slider({name: 'figure z rot', min: -180, max: 180, step: 5, value: 0})
+const figureY = figureYoff + (figureGrounded? - figureSize / 2 + ringTubeRadius / 2 : diskY)
+const figureZ = figureZoff + (figureGrounded? 0 : diskHeight)
+
 let figure = ui.load({name: 'figure file', value: 'none'})
 figure = figure.rotateX(figureXrot).rotateY(figureYrot).rotateZ(figureZrot)
 figure = place(figure)
 figure = figure
     .scale(vec3(figureSize, figureSize, figureSize))
-    .translate(vec3(0 + figureXoff, diskY + figureYoff, diskHeight + figureZoff))
+    .translate(vec3(figureXoff, figureY, figureZ))
 
 //
 // put it together
 //
 
-const charm = combine(ring, disk, figure)
-
 const size = ringHole + 2 * ringTube
 ui.view({distance: 10 * size, height: 2 * size, center: vec3(0, 0, 0)})
 
-export const components = {charm, ring, disk, figure}
-
+const charm = showDisk? combine(ring, disk, figure) : combine(ring, figure)
+export const components = showDisk? {charm, ring, disk, figure} : {charm, ring, figure}
