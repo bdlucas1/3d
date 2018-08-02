@@ -7,6 +7,7 @@ node_modules
 compare
 *.prusa
 #*.gcode
+*.blend
 designer/*.js
 models/sphere/*.js
 models/wine charms/*.js
