@@ -1,0 +1,19 @@
+{
+    "detail": 50,
+    "ring hole": 10,
+    "ring tube": 3,
+    "ring gap": 7,
+    "ring shoulder": 1,
+    "disk height": 3,
+    "disk diameter": 1,
+    "figure grounded": true,
+    "figure size": 30,
+    "figure x off": 0,
+    "figure y off": 3,
+    "figure z off": 0,
+    "figure x rot": 0,
+    "figure y rot": 0,
+    "figure z rot": 0,
+    "figure file": "../imports/Treefrog/files/treefrog_45_cut.stl",
+    "show disk": false
+}
