@@ -370,11 +370,18 @@ class Control {
 }
 
 class ExportModels extends Control {
-    constructor() {
+    constructor(all: boolean) {
         super('#model-controls', 'Export models')
         const circle = 2 * Math.PI
-        this.ctx.moveTo(50, 100)
-        this.ctx.lineTo(50, 0)
+        if (all) {
+            this.ctx.moveTo(40, 100)
+            this.ctx.lineTo(40, 20)
+            this.ctx.moveTo(60, 100)
+            this.ctx.lineTo(60, 20)
+        } else {
+            this.ctx.moveTo(50, 100)
+            this.ctx.lineTo(50, 0)
+        }
         this.ctx.moveTo(25, 40)
         this.ctx.lineTo(50, 0)
         this.ctx.lineTo(75, 40)
@@ -386,8 +393,8 @@ class ExportModels extends Control {
                 log('writing', fn)
                 const csg = m.currentVariant.components![name] //.scale(100)
                 lib.writeSTL(fn, csg)
-                //const stl = io.stlSerializer.serialize(csg, {binary: false})
-                //fs.writeFileSync(fn, stl[0].toString())
+                if (!all)
+                    break
             }
         })
     }
@@ -582,7 +589,8 @@ $(window).on('load', () => {
     remote.getCurrentWindow().setFullScreen(true)
 
     // add controls
-    new ExportModels()
+    new ExportModels(false)
+    new ExportModels(true)
     //new SaveVariant()
     Model.lock = new Lock()
     new UndoRedoVariant(true)
