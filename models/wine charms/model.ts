@@ -73,8 +73,21 @@ figure = figure
 // put it together
 //
 
-const size = ringHole + 2 * ringTube
+let charm = showDisk? combine(ring, disk, figure) : combine(ring, figure)
+
+const mirror = ui.checkbox({name: 'mirror', value: false})
+if (mirror) {
+    const bounds = charm.getBounds()
+    const width = bounds[1].x - bounds[0].x
+    charm = charm.translate(vec3(-width*3/4, 0, 0))
+    charm = combine(charm.scale(vec3(-1,1,1)), charm)
+}
+
+//
+// put it together
+//
+
+const size = ringHole + 2 * ringTube * (mirror? 2 : 1)
 ui.view({distance: 10 * size, height: 2 * size, center: vec3(0, 0, 0)})
 
-const charm = showDisk? combine(ring, disk, figure) : combine(ring, figure)
-export const components = showDisk? {charm, ring, disk, figure} : {charm, ring, figure}
+export const components = showDisk? {charm, figure, disk, ring} : {charm, figure, ring}

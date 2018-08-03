@@ -18,5 +18,6 @@
     "figure x rot": 0,
     "figure y rot": 0,
     "figure z rot": -90,
-    "figure file": "../imports/Very_detailed_scan_of_work_boot/boot fixed 50k.stl"
+    "figure file": "../imports/Very_detailed_scan_of_work_boot/boot fixed 50k.stl",
+    "mirror": true
 }
