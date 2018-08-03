@@ -49,6 +49,9 @@ const disk = rod({
 
 const figureGrounded = ui.checkbox({name: 'figure grounded', value: false})
 const figureSize = ui.slider({name: 'figure size', min: 0.5, max: 40, step: 0.5, value: 15})
+const figureXscale = ui.slider({name: 'figure x scale', min: -2, max: 2, step: 0.1, value: 1})
+const figureYscale = ui.slider({name: 'figure y scale', min: -2, max: 2, step: 0.1, value: 1})
+const figureZscale = ui.slider({name: 'figure z scale', min: -2, max: 2, step: 0.1, value: 1})
 const figureXoff = ui.slider({name: 'figure x off', min: -10, max: 10, step: 0.5, value: 0})
 const figureYoff = ui.slider({name: 'figure y off', min: -10, max: 10, step: 0.5, value: 0})
 const figureZoff = ui.slider({name: 'figure z off', min: -2, max: 2, step: 0.1, value: 0})
@@ -63,6 +66,7 @@ figure = figure.rotateX(figureXrot).rotateY(figureYrot).rotateZ(figureZrot)
 figure = place(figure)
 figure = figure
     .scale(vec3(figureSize, figureSize, figureSize))
+    .scale(vec3(figureXscale, figureYscale, figureZscale))
     .translate(vec3(figureXoff, figureY, figureZ))
 
 //
