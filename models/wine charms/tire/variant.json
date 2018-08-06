@@ -1,0 +1,23 @@
+{
+    "detail": 50,
+    "ring hole": 10,
+    "ring tube": 3,
+    "ring gap": 7,
+    "ring shoulder": 1,
+    "show disk": false,
+    "disk height": 3,
+    "disk diameter": 4,
+    "figure grounded": true,
+    "figure size": 30,
+    "figure x scale": 1,
+    "figure y scale": 1,
+    "figure z scale": 1,
+    "figure x off": 0,
+    "figure y off": 0.5,
+    "figure z off": 0,
+    "figure x rot": 0,
+    "figure y rot": 0,
+    "figure z rot": -90,
+    "figure file": "../imports/Bike_Tire/files/BikeTire005Only.stl",
+    "mirror": false
+}
