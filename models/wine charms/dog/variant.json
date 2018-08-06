@@ -18,6 +18,6 @@
     "figure x rot": 0,
     "figure y rot": 0,
     "figure z rot": 110,
-    "figure file": "../imports/Labrador_Sculpture_Dog_Statue_Color_3D_Scan/Labrador 50k.stl",
+    "figure file": "../imports/Labrador_Sculpture_Dog_Statue_Color_3D_Scan/Labrador fixed 50k.stl",
     "mirror": false
 }
