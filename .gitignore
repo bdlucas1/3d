@@ -12,3 +12,4 @@ designer/*.js
 models/sphere/*.js
 models/wine charms/*.js
 !imports/**/*.stl
+imports/mk3
