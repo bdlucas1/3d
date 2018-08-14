@@ -6,7 +6,7 @@ node_modules
 #*.stl
 compare
 *.prusa
-#*.gcode
+*.gcode
 *.blend
 designer/*.js
 models/sphere/*.js
