@@ -48,7 +48,8 @@ const disk = rod({
 //
 
 const figureGrounded = ui.checkbox({name: 'figure grounded', value: false})
-const figureSize = ui.slider({name: 'figure size', min: 0.5, max: 40, step: 0.5, value: 15})
+const resize = ui.checkbox({name: 'auto size', value: true})
+let figureSize = resize? ui.slider({name: 'figure size', min: 0.5, max: 40, step: 0.5, value: 15}) : 1
 const figureXscale = ui.slider({name: 'figure x scale', min: -2, max: 2, step: 0.1, value: 1})
 const figureYscale = ui.slider({name: 'figure y scale', min: -2, max: 2, step: 0.1, value: 1})
 const figureZscale = ui.slider({name: 'figure z scale', min: -2, max: 2, step: 0.1, value: 1})
@@ -58,8 +59,6 @@ const figureZoff = ui.slider({name: 'figure z off', min: -2, max: 2, step: 0.1, 
 const figureXrot = ui.slider({name: 'figure x rot', min: -180, max: 180, step: 5, value: 0})
 const figureYrot = ui.slider({name: 'figure y rot', min: -180, max: 180, step: 5, value: 0})
 const figureZrot = ui.slider({name: 'figure z rot', min: -180, max: 180, step: 5, value: 0})
-const figureY = figureYoff + (figureGrounded? - figureSize / 2 + ringTubeRadius / 2 : diskY)
-const figureZ = figureZoff + (figureGrounded? 0 : diskHeight)
 
 let figure = ui.load({name: 'figure file', value: 'none'})
 figure = figure.rotateX(figureXrot).rotateY(figureYrot).rotateZ(figureZrot)
@@ -67,6 +66,14 @@ figure = place(figure)
 figure = figure
     .scale(vec3(figureSize, figureSize, figureSize))
     .scale(vec3(figureXscale, figureYscale, figureZscale))
+
+if (!resize) {
+    const bounds = figure.getBounds()
+    figureSize = bounds[1].y - bounds[0].y
+}
+const figureY = figureYoff + (figureGrounded? - figureSize / 2 + ringTubeRadius / 2 : diskY)
+const figureZ = figureZoff + (figureGrounded? 0 : diskHeight)
+figure = figure
     .translate(vec3(figureXoff, figureY, figureZ))
 
 //

@@ -165,12 +165,12 @@ export function writeSTL(fn: string, csg: CSG) {
     fs.writeFileSync(fn, new Buffer(buf))
 }
 
-export function place(csg: CSG) {
+export function place(csg: CSG, doScale = true) {
     const bounds = csg.getBounds()
     log('csg bounds', prt(bounds[0]), prt(bounds[1]))
     const mid = bounds[0].plus(bounds[1]).times(0.5)
     const extent = bounds[1].minus(bounds[0])
-    const scale = 1 / Math.max(extent.x, extent.y, extent.z)
+    const scale = doScale? 1 / Math.max(extent.x, extent.y, extent.z) : 1
     csg = csg.translate(vec3(-mid.x, -mid.y, -bounds[0].z)).scale(vec3(scale, scale, scale))
     return csg
 }
